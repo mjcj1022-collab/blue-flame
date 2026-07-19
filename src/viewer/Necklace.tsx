@@ -9,7 +9,7 @@ const MM_PER_INCH = 25.4
 /** Necklace / chain hanging as a loop, optionally carrying a pendant. */
 export function Necklace({ spec }: { spec: DesignSpec }) {
   const alloy = alloyById(spec.metal.alloyId)
-  const metal = useMetalMaterial(alloy)
+  const metal = useMetalMaterial(alloy, spec.finish)
   const { length, gauge, hasPendant } = spec.necklace
   const circ = length * MM_PER_INCH
   const R = circ / (Math.PI * 2)

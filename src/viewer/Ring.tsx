@@ -8,7 +8,7 @@ import { useMetalMaterial } from './material'
 
 export function Ring({ spec }: { spec: DesignSpec }) {
   const alloy = alloyById(spec.metal.alloyId)
-  const metal = useMetalMaterial(alloy)
+  const metal = useMetalMaterial(alloy, spec.finish)
   const d = stoneDims(spec.center.shapeId, spec.center.carat)
 
   const insideR = sizeToDiameter(spec.ring.size) / 2

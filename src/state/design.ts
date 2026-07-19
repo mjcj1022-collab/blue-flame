@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import {
-  DEFAULT_SPEC, type DesignSpec, type FitProfile, type ProductCategory
+  DEFAULT_SPEC, type DesignSpec, type FitProfile, type ProductCategory, type FinishId
 } from '../spec/types'
 import { registerAlloy, type Alloy } from '../catalog'
 import type { WeightUnit } from '../lib/units'
@@ -22,6 +22,8 @@ interface DesignStore {
   setStone: (id: string) => void
   setCarat: (ct: number) => void
   setSetting: (id: string) => void
+  setFinish: (id: FinishId) => void
+  setEngraving: (patch: Partial<DesignSpec['engraving']>) => void
   setFit: (fit: FitProfile) => void
   load: (spec: DesignSpec) => void
   toggleUnit: () => void
@@ -46,8 +48,11 @@ export const useDesign = create<DesignStore>(set => ({
   setStone: id => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, stoneTypeId: id } } })),
   setCarat: ct => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, carat: ct } } })),
   setSetting: id => set(s => ({ spec: { ...s.spec, setting: { typeId: id } } })),
+  setFinish: id => set(s => ({ spec: { ...s.spec, finish: id } })),
+  setEngraving: patch => set(s => ({ spec: { ...s.spec, engraving: { ...s.spec.engraving, ...patch } } })),
   setFit: fit => set(s => ({ spec: { ...s.spec, ring: { ...s.spec.ring, fit } } })),
-  load: spec => set({ spec }),
+  // Backfill any fields absent from an older saved design.
+  load: spec => set({ spec: { ...DEFAULT_SPEC, ...spec, engraving: { ...DEFAULT_SPEC.engraving, ...spec.engraving } } }),
   toggleUnit: () => set(s => ({ unit: s.unit === 'g' ? 'dwt' : 'g' })),
   toggleCompare: () => set(s => ({ compareOpen: !s.compareOpen })),
   reset: () => set({ spec: DEFAULT_SPEC })

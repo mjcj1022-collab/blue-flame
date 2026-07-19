@@ -8,7 +8,7 @@ import { useMetalMaterial } from './material'
 /** One earring: stone facing the viewer on a post, optionally on a drop. */
 function One({ spec, x }: { spec: DesignSpec; x: number }) {
   const alloy = alloyById(spec.metal.alloyId)
-  const metal = useMetalMaterial(alloy)
+  const metal = useMetalMaterial(alloy, spec.finish)
   const { postGauge, postLength, dropLength } = spec.earring
   const dropY = dropLength > 0 ? dropLength : 0
 

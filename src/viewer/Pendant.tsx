@@ -8,7 +8,7 @@ import { useMetalMaterial } from './material'
 /** A set stone facing the viewer, hung from a bail, with a short chain hint. */
 export function Pendant({ spec }: { spec: DesignSpec }) {
   const alloy = alloyById(spec.metal.alloyId)
-  const metal = useMetalMaterial(alloy)
+  const metal = useMetalMaterial(alloy, spec.finish)
   const d = stoneDims(spec.center.shapeId, spec.center.carat)
   const { bailInner, bailGauge, hasChain } = spec.pendant
 

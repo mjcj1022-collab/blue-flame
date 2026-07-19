@@ -1,7 +1,8 @@
 import type { DesignSpec } from '../spec/types'
 import { usesSetting, stoneOnPiece, NO_STONE } from '../spec/types'
-import { settingById, shapeById, stoneById, stoneMm } from '../catalog'
+import { settingById, shapeById, stoneById, stoneMm, finishById } from '../catalog'
 import { computeMetal, type MetalResult } from './metal'
+import { engraveFee } from './engrave'
 
 export const FINISH_FEE = 95     // cast, file, sand, pre-polish, final polish
 export const RHODIUM_FEE = 45    // white-metal rhodium plating pass
@@ -17,6 +18,8 @@ export interface PriceResult {
   accentCount: number
   platingFee: number
   finishFee: number
+  finishExtra: number
+  engraveFee: number
   subtotal: number
   total: number
 }
@@ -57,7 +60,9 @@ export function computePrice(spec: DesignSpec): PriceResult {
   const accentCost = melee * (stone.rate * 0.5) * Math.pow(accentCt, stone.exponent) + melee * MELEE_LABOR_EACH
 
   const platingFee = spec.metal.rhodium && metal.alloy.platable ? RHODIUM_FEE : 0
-  const subtotal = metal.netMetalCost + stoneCost + settingFee + accentCost + platingFee + FINISH_FEE
+  const finishExtra = finishById(spec.finish).fee
+  const engrave = engraveFee(spec)
+  const subtotal = metal.netMetalCost + stoneCost + settingFee + accentCost + platingFee + FINISH_FEE + finishExtra + engrave
 
   return {
     metal,
@@ -69,6 +74,8 @@ export function computePrice(spec: DesignSpec): PriceResult {
     accentCount: melee,
     platingFee,
     finishFee: FINISH_FEE,
+    finishExtra,
+    engraveFee: engrave,
     subtotal,
     total: subtotal * MARGIN
   }

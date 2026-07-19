@@ -9,7 +9,7 @@ const TWO_PI = Math.PI * 2
 /** Bracelet / bangle / cuff / tennis, rendered as a loop worn around the wrist. */
 export function Bracelet({ spec }: { spec: DesignSpec }) {
   const alloy = alloyById(spec.metal.alloyId)
-  const metal = useMetalMaterial(alloy)
+  const metal = useMetalMaterial(alloy, spec.finish)
   const { kind, wristCircumference, fitAllowance, width, thickness, linkCount } = spec.bracelet
   const length = wristCircumference + fitAllowance
   const R = length / TWO_PI

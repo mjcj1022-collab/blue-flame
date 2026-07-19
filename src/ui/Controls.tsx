@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useDesign } from '../state/design'
-import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, type Alloy } from '../catalog'
+import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, type Alloy } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails } from '../lib/pricing'
-import { settingById } from '../catalog'
+import { engraveCapacity, ENGRAVE_FONTS } from '../lib/engrave'
 import {
   type ProductCategory, type BraceletKind, type EarringBack,
   CATEGORY_LABEL, hasCenterStone, stoneOnPiece, NO_STONE
@@ -264,6 +264,40 @@ function MetalGroup() {
   )
 }
 
+function PersonalizationGroup() {
+  const { spec, setFinish, setEngraving } = useDesign()
+  const cap = engraveCapacity(spec)
+  const used = spec.engraving.text.length
+  const over = used > cap
+  return (
+    <Group title="Finish & engraving">
+      <div className="opts c2">
+        {FINISHES.map(f => (
+          <button key={f.id} className="opt" aria-pressed={spec.finish === f.id} onClick={() => setFinish(f.id)}>{f.name}</button>
+        ))}
+      </div>
+      <p className="hint">{finishById(spec.finish).note}</p>
+
+      <div className="row" style={{ marginTop: 16 }}>
+        <label htmlFor="eng">Engraving</label>
+        <span className="val" style={over ? { color: 'var(--warn)' } : undefined}>{used}/{cap}</span>
+      </div>
+      <input id="eng" className="lib-name" style={{ width: '100%' }} value={spec.engraving.text}
+        onChange={e => setEngraving({ text: e.target.value })} placeholder="Add a message…" />
+      <div className="opts c2" style={{ marginTop: 10 }}>
+        <button className="opt" aria-pressed={spec.engraving.placement === 'inside'} onClick={() => setEngraving({ placement: 'inside' })}>Inside</button>
+        <button className="opt" aria-pressed={spec.engraving.placement === 'outside'} onClick={() => setEngraving({ placement: 'outside' })}>Outside</button>
+      </div>
+      <div className="opts" style={{ marginTop: 10 }}>
+        {ENGRAVE_FONTS.map(f => (
+          <button key={f} className="opt" aria-pressed={spec.engraving.font === f} onClick={() => setEngraving({ font: f })}>{f}</button>
+        ))}
+      </div>
+      {over && <div className="flag"><b>Too long</b>{used - cap} character(s) over the {cap}-character limit for this {spec.engraving.placement} surface.</div>}
+    </Group>
+  )
+}
+
 export function Controls() {
   const { spec, setShape, setStone, setCarat, setSetting } = useDesign()
   const shape = shapeById(spec.center.shapeId)
@@ -361,6 +395,8 @@ export function Controls() {
           </Group>
         </>
       )}
+
+      <PersonalizationGroup />
     </>
   )
 }

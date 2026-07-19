@@ -1,6 +1,6 @@
 import { useDesign } from '../state/design'
 import { computePrice, stoneUnits } from '../lib/pricing'
-import { alloyById, shapeById, stoneById, settingById, stoneMm } from '../catalog'
+import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
 import { CATEGORY_LABEL, type DesignSpec } from '../spec/types'
@@ -91,6 +91,11 @@ function techSheet(spec: DesignSpec) {
     `  Pattern weight    ${m.patternWax.toFixed(2)} g wax  /  ${m.patternResin.toFixed(2)} g castable resin`,
     ...stoneLines(spec),
     '',
+    'FINISH & PERSONALIZATION',
+    `  Finish            ${finishById(spec.finish).name}`,
+    `  Engraving         ${spec.engraving.text.trim() ? `“${spec.engraving.text.trim()}” (${spec.engraving.placement}, ${spec.engraving.font})` : 'None'}`,
+    spec.metal.rhodium && p.metal.alloy.platable ? '  Plating           Rhodium' : '',
+    '',
     'PRICE',
     `  Net metal         ${money(p.metalCost)}`,
     ...(count > 0 ? [
@@ -98,6 +103,9 @@ function techSheet(spec: DesignSpec) {
       `  Setting labor     ${money(p.settingFee)}`
     ] : []),
     ...(p.accentCount > 0 ? [`  Accent (${p.accentCount})      ${money(p.accentCost)}`] : []),
+    ...(p.platingFee > 0 ? [`  Rhodium plating   ${money(p.platingFee)}`] : []),
+    ...(p.finishExtra > 0 ? [`  Surface finish    ${money(p.finishExtra)}`] : []),
+    ...(p.engraveFee > 0 ? [`  Engraving         ${money(p.engraveFee)}`] : []),
     `  Cast and finish   ${money(p.finishFee)}`,
     `  ESTIMATE          ${money(p.total)}`,
     '',
@@ -135,6 +143,8 @@ export function QuotePanel() {
       {p.accentCount > 0 && <div className="qline"><span>{p.accentCount} accent stones + setting</span><span>{money(p.accentCost)}</span></div>}
       {hasStones && <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>}
       {p.platingFee > 0 && <div className="qline"><span>Rhodium plating</span><span>{money(p.platingFee)}</span></div>}
+      {p.finishExtra > 0 && <div className="qline"><span>Surface finish</span><span>{money(p.finishExtra)}</span></div>}
+      {p.engraveFee > 0 && <div className="qline"><span>Engraving</span><span>{money(p.engraveFee)}</span></div>}
       <div className="qline"><span>Cast, finish, polish</span><span>{money(p.finishFee)}</span></div>
       <div className="qtotal">
         <span className="lbl">Estimate</span>

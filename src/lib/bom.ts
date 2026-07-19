@@ -1,5 +1,5 @@
 import type { DesignSpec } from '../spec/types'
-import { alloyById, shapeById, stoneById, settingById, stoneMm } from '../catalog'
+import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById } from '../catalog'
 import { computeMetal } from './metal'
 import { computePrice, stoneUnits } from './pricing'
 
@@ -91,6 +91,12 @@ export function computeBom(spec: DesignSpec): Bom {
 
   // Labor
   lines.push({ kind: 'labor', item: 'Cast, finish & polish', detail: `${(m.finishingLoss * 100).toFixed(1)}% finishing loss`, qty: '—', cost: p.finishFee })
+
+  const finish = finishById(spec.finish)
+  if (spec.finish && spec.finish !== 'polish') lines.push({ kind: 'labor', item: `${finish.name} finish`, detail: finish.note, qty: '—', cost: p.finishExtra })
+
+  const eng = spec.engraving?.text?.trim() ?? ''
+  if (eng) lines.push({ kind: 'labor', item: 'Engraving', detail: `“${eng}” · ${spec.engraving.placement} · ${spec.engraving.font}`, qty: `${eng.length} ch`, cost: p.engraveFee })
 
   return {
     lines,

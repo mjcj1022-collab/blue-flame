@@ -13,6 +13,14 @@ export type ProductCategory = 'ring' | 'pendant' | 'earring' | 'bracelet' | 'nec
 export type FitProfile = 'standard' | 'comfort'
 export type EarringBack = 'friction' | 'screw' | 'lever' | 'latch'
 export type BraceletKind = 'tennis' | 'bangle' | 'cuff' | 'chain'
+export type FinishId = 'polish' | 'satin' | 'matte' | 'sandblast' | 'hammered' | 'florentine' | 'oxidized'
+export type EngravePlacement = 'inside' | 'outside'
+
+export interface Engraving {
+  text: string
+  placement: EngravePlacement
+  font: string
+}
 
 export interface Center {
   shapeId: string
@@ -69,6 +77,8 @@ export interface DesignSpec {
   metal: { alloyId: string; rhodium?: boolean }
   center: Center
   setting: { typeId: string }
+  finish: FinishId
+  engraving: Engraving
   ring: RingGeo
   pendant: PendantGeo
   earring: EarringGeo
@@ -88,6 +98,8 @@ export const DEFAULT_SPEC: DesignSpec = {
   metal: { alloyId: '14ky' },
   center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1.0 },
   setting: { typeId: 'p4' },
+  finish: 'polish',
+  engraving: { text: '', placement: 'inside', font: 'Serif' },
   ring: DEFAULT_RING,
   pendant: DEFAULT_PENDANT,
   earring: DEFAULT_EARRING,
