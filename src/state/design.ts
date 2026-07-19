@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   DEFAULT_SPEC, type DesignSpec, type FitProfile, type ProductCategory
 } from '../spec/types'
+import { registerAlloy, type Alloy } from '../catalog'
 import type { WeightUnit } from '../lib/units'
 
 interface DesignStore {
@@ -15,6 +16,7 @@ interface DesignStore {
   setBracelet: (patch: Partial<DesignSpec['bracelet']>) => void
   setNecklace: (patch: Partial<DesignSpec['necklace']>) => void
   setAlloy: (id: string) => void
+  applyCustomAlloy: (alloy: Alloy) => void
   setShape: (id: string) => void
   setStone: (id: string) => void
   setCarat: (ct: number) => void
@@ -37,6 +39,7 @@ export const useDesign = create<DesignStore>(set => ({
   setBracelet: patch => set(s => ({ spec: { ...s.spec, bracelet: { ...s.spec.bracelet, ...patch } } })),
   setNecklace: patch => set(s => ({ spec: { ...s.spec, necklace: { ...s.spec.necklace, ...patch } } })),
   setAlloy: id => set(s => ({ spec: { ...s.spec, metal: { alloyId: id } } })),
+  applyCustomAlloy: alloy => { registerAlloy(alloy); set(s => ({ spec: { ...s.spec, metal: { alloyId: alloy.id } } })) },
   setShape: id => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, shapeId: id } } })),
   setStone: id => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, stoneTypeId: id } } })),
   setCarat: ct => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, carat: ct } } })),

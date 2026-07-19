@@ -41,4 +41,14 @@ export const ALLOYS: Alloy[] = [
   { id:'ag93', name:'Argentium .935',short:'AG93', density:10.20, fine:0.935, symbol:'Ag', spot:30,   premium:0.28, meltLoss:0.030, buttonMin:6,  finishPenalty:0,     color:0xD4D8DB, roughness:0.20, hallmark:'935' }
 ]
 
-export const alloyById = (id: string): Alloy => ALLOYS.find(a => a.id === id) ?? ALLOYS[1]
+/** Runtime registry for alloys composed in the metal lab. */
+export const CUSTOM_ALLOYS: Alloy[] = []
+
+export function registerAlloy(a: Alloy): void {
+  const i = CUSTOM_ALLOYS.findIndex(x => x.id === a.id)
+  if (i >= 0) CUSTOM_ALLOYS[i] = a
+  else CUSTOM_ALLOYS.push(a)
+}
+
+export const alloyById = (id: string): Alloy =>
+  ALLOYS.find(a => a.id === id) ?? CUSTOM_ALLOYS.find(a => a.id === id) ?? ALLOYS[1]

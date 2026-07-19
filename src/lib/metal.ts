@@ -1,6 +1,6 @@
 import type { DesignSpec } from '../spec/types'
 import { usesSetting } from '../spec/types'
-import { ALLOYS, alloyById, settingById, type Alloy } from '../catalog'
+import { ALLOYS, CUSTOM_ALLOYS, alloyById, settingById, type Alloy } from '../catalog'
 import { computeVolume } from './volume'
 import { OZT } from './units'
 
@@ -100,9 +100,9 @@ export function computeMetal(spec: DesignSpec, alloyId?: string): MetalResult {
   }
 }
 
-/** The same design costed across every alloy in the catalog. */
+/** The same design costed across every alloy in the catalog (plus any custom). */
 export function compareAlloys(spec: DesignSpec): MetalResult[] {
-  return ALLOYS.map(a => computeMetal(spec, a.id))
+  return [...ALLOYS, ...CUSTOM_ALLOYS].map(a => computeMetal(spec, a.id))
 }
 
 /**
