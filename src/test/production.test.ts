@@ -42,6 +42,15 @@ describe('settings, accents and metals depth', () => {
     expect(halo.accentCost).toBeGreaterThan(0)
     expect(halo.total).toBeGreaterThan(solit.total)
   })
+  it('melee quality and style drive accent cost; count is overridable', () => {
+    const base = computePrice(cat('ring', { setting: { typeId: 'hal' } }))
+    const best = computePrice(cat('ring', { setting: { typeId: 'hal', melee: { quality: 'fg' } } }))
+    const low = computePrice(cat('ring', { setting: { typeId: 'hal', melee: { quality: 'ij' } } }))
+    expect(best.accentCost).toBeGreaterThan(base.accentCost)
+    expect(low.accentCost).toBeLessThan(base.accentCost)
+    const more = computePrice(cat('ring', { setting: { typeId: 'hal', melee: { count: 30 } } }))
+    expect(more.accentCount).toBe(30)
+  })
   it('rhodium plating adds a fee only on platable white metals', () => {
     const plated = computePrice(cat('ring', { metal: { alloyId: '14kw', rhodium: true } }))
     const bare = computePrice(cat('ring', { metal: { alloyId: '14kw', rhodium: false } }))

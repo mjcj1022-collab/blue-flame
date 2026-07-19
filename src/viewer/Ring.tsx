@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
 import type { DesignSpec } from '../spec/types'
 import { stoneOnPiece } from '../spec/types'
-import { alloyById } from '../catalog'
+import { alloyById, settingById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
+import { shankGeometry } from '../lib/sculpt'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
+import { HaloRing } from './HaloRing'
 import { useMetalMaterial } from './material'
 
 export function Ring({ spec }: { spec: DesignSpec }) {
@@ -12,24 +15,43 @@ export function Ring({ spec }: { spec: DesignSpec }) {
   const headMetalMat = useMetalMaterial(alloyById(spec.metal.headAlloyId ?? spec.metal.alloyId), spec.finish)
   const headMetal = spec.metal.twoTone && spec.metal.headAlloyId ? headMetalMat : metal
   const d = stoneDims(spec.center.shapeId, spec.center.carat)
+  const { size, width, thickness, profile } = spec.ring
 
-  const insideR = sizeToDiameter(spec.ring.size) / 2
-  const tube = spec.ring.thickness / 2
+  const insideR = sizeToDiameter(size) / 2
+  const tube = thickness / 2
   const centreR = insideR + tube
   const seatY = centreR + tube * 0.2
   const stoneY = seatY + d.pavH * 0.55
 
+  // Round keeps the proven torus; other profiles use a real swept band.
+  const bandGeo = useMemo(
+    () => (profile && profile !== 'round' ? shankGeometry({ ringSize: size, profile, width, thickness }) : null),
+    [profile, size, width, thickness]
+  )
+
+  const setting = settingById(spec.setting.typeId)
+  const halo = stoneOnPiece(spec) && (setting.id === 'hal' || setting.id === 'hl2') && (setting.melee ?? 0) > 0
+
   return (
     <group>
-      {/* Shank — a torus scaled on the ring axis to give width != thickness */}
-      <mesh material={metal} scale={[1, 1, spec.ring.width / spec.ring.thickness]}>
-        <torusGeometry args={[centreR, tube, 24, 180]} />
-      </mesh>
+      {bandGeo
+        ? <mesh material={metal} geometry={bandGeo} />
+        : <mesh material={metal} scale={[1, 1, width / thickness]}><torusGeometry args={[centreR, tube, 24, 180]} /></mesh>}
 
       {stoneOnPiece(spec) && (
         <group position={[0, stoneY, 0]}>
           <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
             carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
+          {halo && (
+            <HaloRing
+              material={headMetal}
+              centerStoneWidth={d.width}
+              count={spec.setting.melee?.count ?? setting.melee ?? 16}
+              accentCt={spec.setting.melee?.caratEach ?? setting.accentCt ?? 0.01}
+              stoneTypeId={spec.center.stoneTypeId}
+              double={setting.id === 'hl2'}
+            />
+          )}
         </group>
       )}
     </group>

@@ -26,6 +26,8 @@ interface DesignStore {
   setGrading: (patch: Partial<DesignSpec['center']['grading']>) => void
   setCert: (patch: Partial<DesignSpec['center']['cert']>) => void
   setSetting: (id: string) => void
+  setProfile: (p: DesignSpec['ring']['profile']) => void
+  setMelee: (patch: Partial<NonNullable<DesignSpec['setting']['melee']>>) => void
   setFinish: (id: FinishId) => void
   setEngraving: (patch: Partial<DesignSpec['engraving']>) => void
   setFit: (fit: FitProfile) => void
@@ -56,12 +58,15 @@ export const useDesign = create<DesignStore>(set => ({
   setGrading: patch => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, grading: { ...s.spec.center.grading, ...patch } } } })),
   setCert: patch => set(s => ({ spec: { ...s.spec, center: { ...s.spec.center, cert: { ...s.spec.center.cert, ...patch } } } })),
   setSetting: id => set(s => ({ spec: { ...s.spec, setting: { typeId: id } } })),
+  setProfile: p => set(s => ({ spec: { ...s.spec, ring: { ...s.spec.ring, profile: p } } })),
+  setMelee: patch => set(s => ({ spec: { ...s.spec, setting: { ...s.spec.setting, melee: { ...s.spec.setting.melee, ...patch } } } })),
   setFinish: id => set(s => ({ spec: { ...s.spec, finish: id } })),
   setEngraving: patch => set(s => ({ spec: { ...s.spec, engraving: { ...s.spec.engraving, ...patch } } })),
   setFit: fit => set(s => ({ spec: { ...s.spec, ring: { ...s.spec.ring, fit } } })),
   // Backfill any fields absent from an older saved design.
   load: spec => set({ spec: {
     ...DEFAULT_SPEC, ...spec,
+    ring: { ...DEFAULT_SPEC.ring, ...spec.ring },
     center: { ...DEFAULT_SPEC.center, ...spec.center, grading: { ...DEFAULT_SPEC.center.grading, ...spec.center?.grading }, cert: { ...DEFAULT_SPEC.center.cert, ...spec.center?.cert } },
     engraving: { ...DEFAULT_SPEC.engraving, ...spec.engraving }
   } }),

@@ -1,7 +1,10 @@
-import type { DesignSpec } from '../spec/types'
+import type { DesignSpec, BandProfile } from '../spec/types'
 import { stoneOnPiece } from '../spec/types'
 import { shapeById, stoneMm, settingById, type SettingType } from '../catalog'
 import { sizeToDiameter } from './sizing'
+
+/** Cross-section fill by band profile. `round` is the calibrated baseline. */
+const PROFILE_FACTOR: Record<BandProfile, number> = { round: 0.90, flat: 1.02, dshape: 0.96, knife: 0.70 }
 
 /**
  * Shank cross-section profile factor.
@@ -51,7 +54,7 @@ const wireVolume = (lengthMm: number, gaugeMm: number) =>
   Math.PI * (gaugeMm / 2) ** 2 * lengthMm
 
 function ringVolume(spec: DesignSpec): VolumeBreakdown {
-  const { size, width, thickness, fit } = spec.ring
+  const { size, width, thickness, fit, profile } = spec.ring
   const setting = settingById(spec.setting.typeId)
   const stoneW = centerStoneWidth(spec)
 
@@ -59,7 +62,7 @@ function ringVolume(spec: DesignSpec): VolumeBreakdown {
   const tube = thickness / 2
   const centreR = insideR + tube
 
-  let section = width * thickness * PROFILE_FLAT
+  let section = width * thickness * (PROFILE_FACTOR[profile] ?? PROFILE_FLAT)
   if (fit === 'comfort') section *= COMFORT_HOLLOW
   const shank = section * 2 * Math.PI * centreR
 

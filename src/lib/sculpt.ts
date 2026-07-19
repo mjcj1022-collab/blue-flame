@@ -46,7 +46,7 @@ function profileShape(profile: ShankProfile, width: number, thickness: number): 
   return s
 }
 
-function shankGeometry(p: SculptParams): THREE.BufferGeometry {
+export function shankGeometry(p: SculptParams): THREE.BufferGeometry {
   const ringSize = p.ringSize ?? 7
   const profile = p.profile ?? 'round'
   const width = p.width ?? 2.2

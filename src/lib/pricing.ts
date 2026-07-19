@@ -1,6 +1,6 @@
 import type { DesignSpec } from '../spec/types'
 import { usesSetting, stoneOnPiece, NO_STONE } from '../spec/types'
-import { settingById, shapeById, stoneById, stoneMm, finishById, alloyById, isGradeable, gradeMultiplier, DEFAULT_GRADING } from '../catalog'
+import { settingById, shapeById, stoneById, stoneMm, finishById, alloyById, isGradeable, gradeMultiplier, DEFAULT_GRADING, meleeQuality, meleeStyle } from '../catalog'
 import { computeMetal, type MetalResult } from './metal'
 import { engraveFee } from './engrave'
 
@@ -55,10 +55,14 @@ export function computePrice(spec: DesignSpec): PriceResult {
   const settingFee = usesSetting(spec.category) && count > 0 ? count * setting.fee : 0
 
   // Accent stones (halo, pavé, channel, three-stone sides): cheaper per-ct
-  // melee plus bead-setting labor.
-  const melee = count > 0 && setting.melee ? setting.melee : 0
-  const accentCt = setting.accentCt ?? 0.01
-  const accentCost = melee * (stone.rate * 0.5) * Math.pow(accentCt, stone.exponent) + melee * MELEE_LABOR_EACH
+  // melee plus bead-setting labor. Count, size, quality and setting style are
+  // designer-overridable.
+  const mOver = spec.setting.melee
+  const melee = count > 0 && setting.melee ? (mOver?.count ?? setting.melee) : 0
+  const accentCt = mOver?.caratEach ?? setting.accentCt ?? 0.01
+  const qMult = meleeQuality(mOver?.quality ?? 'gh').mult
+  const sMult = meleeStyle(mOver?.style ?? 'bright').mult
+  const accentCost = melee * (stone.rate * 0.5 * qMult) * Math.pow(accentCt, stone.exponent) + melee * MELEE_LABOR_EACH * sMult
 
   const platingFee = spec.metal.rhodium && metal.alloy.platable ? RHODIUM_FEE : 0
   const finishExtra = finishById(spec.finish).fee

@@ -152,6 +152,15 @@ describe('non-ring weight relationships hold', () => {
   })
 })
 
+describe('band profile', () => {
+  const at = (profile: DesignSpec['ring']['profile']) =>
+    computeMetal(cat('ring', { ring: { ...DEFAULT_SPEC.ring, profile, size: 7, width: 2, thickness: 1.6 } })).cast
+  it('knife-edge is lighter than round, round lighter than flat', () => {
+    expect(at('knife')).toBeLessThan(at('round'))
+    expect(at('round')).toBeLessThan(at('flat'))
+  })
+})
+
 describe('two-tone metals', () => {
   const single = computeMetal(cat('ring', { metal: { alloyId: '14ky' } }))
   const twoTone = computeMetal(cat('ring', { metal: { alloyId: '14ky', twoTone: true, headAlloyId: 'pt95' } }))

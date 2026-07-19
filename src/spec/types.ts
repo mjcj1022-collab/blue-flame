@@ -24,6 +24,9 @@ export interface Engraving {
 
 import type { Grading, Cert } from '../catalog/grading'
 import { DEFAULT_GRADING, DEFAULT_CERT } from '../catalog/grading'
+import type { MeleeSpec } from '../catalog/melee'
+
+export type BandProfile = 'round' | 'flat' | 'dshape' | 'knife'
 
 export interface Center {
   shapeId: string
@@ -39,6 +42,7 @@ export interface RingGeo {
   width: number         // mm, across the finger
   thickness: number     // mm, radial
   fit: FitProfile
+  profile: BandProfile  // exterior cross-section
 }
 
 /** Pendant — a set stone hung from a bail, optionally on a chain. */
@@ -81,7 +85,7 @@ export interface DesignSpec {
   category: ProductCategory
   metal: { alloyId: string; rhodium?: boolean; twoTone?: boolean; headAlloyId?: string }
   center: Center
-  setting: { typeId: string }
+  setting: { typeId: string; melee?: MeleeSpec }
   finish: FinishId
   engraving: Engraving
   ring: RingGeo
@@ -91,7 +95,7 @@ export interface DesignSpec {
   necklace: NecklaceGeo
 }
 
-export const DEFAULT_RING: RingGeo = { size: 6.5, width: 2.0, thickness: 1.8, fit: 'standard' }
+export const DEFAULT_RING: RingGeo = { size: 6.5, width: 2.0, thickness: 1.8, fit: 'standard', profile: 'round' }
 export const DEFAULT_PENDANT: PendantGeo = { bailInner: 4.0, bailGauge: 1.2, hasChain: true, chainLength: 18, chainGauge: 1.0 }
 export const DEFAULT_EARRING: EarringGeo = { pair: true, postGauge: 0.8, postLength: 10, back: 'friction', dropLength: 0 }
 export const DEFAULT_BRACELET: BraceletGeo = { kind: 'tennis', wristCircumference: 165, fitAllowance: 12, width: 3.5, thickness: 2.2, linkCount: 42 }

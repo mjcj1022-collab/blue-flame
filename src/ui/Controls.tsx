@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useDesign } from '../state/design'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
-import { guardrails } from '../lib/pricing'
+import { guardrails, computePrice } from '../lib/pricing'
 import { engraveCapacity, ENGRAVE_FONTS } from '../lib/engrave'
+import { MELEE_QUALITY, MELEE_STYLE } from '../catalog'
+import { money } from '../lib/units'
 import {
   type ProductCategory, type BraceletKind, type EarringBack,
   CATEGORY_LABEL, hasCenterStone, stoneOnPiece, NO_STONE
@@ -59,8 +61,10 @@ function TemplatePicker() {
   )
 }
 
+const BAND_PROFILES: [string, string][] = [['round', 'Round'], ['flat', 'Flat'], ['dshape', 'D-shape'], ['knife', 'Knife-edge']]
+
 function RingControls() {
-  const { spec, setRing, setFit } = useDesign()
+  const { spec, setRing, setFit, setProfile } = useDesign()
   const advice = fitAdvice(spec.ring.size, spec.ring.width, spec.ring.fit)
   const conv = sizeConversions(spec.ring.size)
   const resize = settingById(spec.setting.typeId).resizeRange
@@ -101,6 +105,12 @@ function RingControls() {
           <button className="opt" aria-pressed={spec.ring.fit === 'comfort'} onClick={() => setFit('comfort')}>
             Comfort fit<small>Domed interior</small>
           </button>
+        </div>
+        <div className="subhead" style={{ marginTop: 16 }}>Band profile</div>
+        <div className="opts c2">
+          {BAND_PROFILES.map(([id, label]) => (
+            <button key={id} className="opt" aria-pressed={(spec.ring.profile ?? 'round') === id} onClick={() => setProfile(id as never)}>{label}</button>
+          ))}
         </div>
       </Group>
     </>
@@ -356,6 +366,34 @@ function GradingGroup() {
   )
 }
 
+function MeleeGroup() {
+  const { spec, setMelee } = useDesign()
+  const setting = settingById(spec.setting.typeId)
+  if (!setting.melee) return null
+  const m = spec.setting.melee ?? {}
+  const count = m.count ?? setting.melee
+  const caratEach = m.caratEach ?? setting.accentCt ?? 0.015
+  const quality = m.quality ?? 'gh'
+  const style = m.style ?? 'bright'
+  const p = computePrice(spec)
+  return (
+    <Group title="Melee / pavé designer">
+      <Slider id="m-count" label="Accent count" value={count} min={2} max={60} step={1} display={`${count}`} onChange={v => setMelee({ count: v })} />
+      <div style={{ height: 14 }} />
+      <Slider id="m-size" label="Accent size" value={caratEach} min={0.005} max={0.25} step={0.005} display={`${caratEach.toFixed(3)} ct`} onChange={v => setMelee({ caratEach: v })} />
+      <div className="subhead" style={{ marginTop: 14 }}>Quality</div>
+      <div className="opts">
+        {MELEE_QUALITY.map(t => <button key={t.id} className="opt" aria-pressed={quality === t.id} onClick={() => setMelee({ quality: t.id })}>{t.label}</button>)}
+      </div>
+      <div className="subhead" style={{ marginTop: 12 }}>Setting style</div>
+      <div className="opts c2">
+        {MELEE_STYLE.map(t => <button key={t.id} className="opt" aria-pressed={style === t.id} onClick={() => setMelee({ style: t.id })}>{t.label}</button>)}
+      </div>
+      <p className="hint">{count} stones · <b>{(count * caratEach).toFixed(2)} ct</b> total · accents + setting <b>{money(p.accentCost)}</b></p>
+    </Group>
+  )
+}
+
 export function Controls() {
   const { spec, setShape, setStone, setCarat, setSetting } = useDesign()
   const shape = shapeById(spec.center.shapeId)
@@ -453,6 +491,8 @@ export function Controls() {
               </div>
             ))}
           </Group>
+
+          <MeleeGroup />
         </>
       )}
 
