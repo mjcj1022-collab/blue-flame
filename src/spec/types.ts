@@ -2,26 +2,110 @@
  * DesignSpec — the single source of truth for a piece.
  * Geometry, weight, cost and the tech sheet are all DERIVED from this.
  * Nothing is ever stored as a mesh.
+ *
+ * A design belongs to one product CATEGORY. Every category keeps its own
+ * geometry block; the active `category` selects which block the engines read.
+ * The stone (`center`) and `setting` are shared — a pendant and a ring set the
+ * same stone the same way, so the head math is written once and reused.
  */
+export type ProductCategory = 'ring' | 'pendant' | 'earring' | 'bracelet' | 'necklace'
+
 export type FitProfile = 'standard' | 'comfort'
+export type EarringBack = 'friction' | 'screw' | 'lever' | 'latch'
+export type BraceletKind = 'tennis' | 'bangle' | 'cuff' | 'chain'
+
+export interface Center {
+  shapeId: string
+  stoneTypeId: string
+  carat: number
+}
+
+/** Ring — sized on a mandrel, inside diameter in mm. */
+export interface RingGeo {
+  size: number          // US ring size, quarter increments
+  width: number         // mm, across the finger
+  thickness: number     // mm, radial
+  fit: FitProfile
+}
+
+/** Pendant — a set stone hung from a bail, optionally on a chain. */
+export interface PendantGeo {
+  bailInner: number     // mm, inner height of the bail loop
+  bailGauge: number     // mm, wire diameter of the bail
+  hasChain: boolean
+  chainLength: number   // inches
+  chainGauge: number    // mm, chain wire gauge
+}
+
+/** Earring — a pair (or single) of set stones on posts, optionally dropped. */
+export interface EarringGeo {
+  pair: boolean         // price/weight a matched pair vs a single
+  postGauge: number     // mm, post wire diameter
+  postLength: number    // mm
+  back: EarringBack
+  dropLength: number    // mm, 0 for a stud
+}
+
+/** Bracelet / bangle / cuff / tennis. */
+export interface BraceletGeo {
+  kind: BraceletKind
+  wristCircumference: number // mm, measured wrist
+  fitAllowance: number       // mm added for fit (snug/standard/loose)
+  width: number              // mm
+  thickness: number          // mm
+  linkCount: number          // tennis: number of set stones around the length
+}
+
+/** Necklace / chain, optionally carrying a pendant. */
+export interface NecklaceGeo {
+  length: number        // inches
+  gauge: number         // mm, chain wire gauge
+  hasPendant: boolean
+}
 
 export interface DesignSpec {
   version: 1
-  ring: {
-    size: number          // US ring size, quarter increments
-    width: number         // mm, across the finger
-    thickness: number     // mm, radial
-    fit: FitProfile
-  }
+  category: ProductCategory
   metal: { alloyId: string }
-  center: { shapeId: string; stoneTypeId: string; carat: number }
+  center: Center
   setting: { typeId: string }
+  ring: RingGeo
+  pendant: PendantGeo
+  earring: EarringGeo
+  bracelet: BraceletGeo
+  necklace: NecklaceGeo
 }
+
+export const DEFAULT_RING: RingGeo = { size: 6.5, width: 2.0, thickness: 1.8, fit: 'standard' }
+export const DEFAULT_PENDANT: PendantGeo = { bailInner: 4.0, bailGauge: 1.2, hasChain: true, chainLength: 18, chainGauge: 1.0 }
+export const DEFAULT_EARRING: EarringGeo = { pair: true, postGauge: 0.8, postLength: 10, back: 'friction', dropLength: 0 }
+export const DEFAULT_BRACELET: BraceletGeo = { kind: 'tennis', wristCircumference: 165, fitAllowance: 12, width: 3.5, thickness: 2.2, linkCount: 42 }
+export const DEFAULT_NECKLACE: NecklaceGeo = { length: 18, gauge: 1.2, hasPendant: false }
 
 export const DEFAULT_SPEC: DesignSpec = {
   version: 1,
-  ring: { size: 6.5, width: 2.0, thickness: 1.8, fit: 'standard' },
+  category: 'ring',
   metal: { alloyId: '14ky' },
   center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1.0 },
-  setting: { typeId: 'p4' }
+  setting: { typeId: 'p4' },
+  ring: DEFAULT_RING,
+  pendant: DEFAULT_PENDANT,
+  earring: DEFAULT_EARRING,
+  bracelet: DEFAULT_BRACELET,
+  necklace: DEFAULT_NECKLACE
+}
+
+/** Does this category carry a single center stone in a head? */
+export const hasCenterStone = (c: ProductCategory): boolean =>
+  c === 'ring' || c === 'pendant' || c === 'earring'
+
+/** Does this category use the prong/bezel setting head? */
+export const usesSetting = (c: ProductCategory): boolean => hasCenterStone(c)
+
+export const CATEGORY_LABEL: Record<ProductCategory, string> = {
+  ring: 'Ring',
+  pendant: 'Pendant',
+  earring: 'Earrings',
+  bracelet: 'Bracelet',
+  necklace: 'Necklace'
 }

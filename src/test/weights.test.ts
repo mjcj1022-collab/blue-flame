@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SPEC, type DesignSpec } from '../spec/types'
+import { DEFAULT_SPEC, type DesignSpec, type ProductCategory } from '../spec/types'
 import { computeMetal, convertWeight, patternToMetal, PATTERN_DENSITY } from '../lib/metal'
+import { computePrice } from '../lib/pricing'
 import { alloyById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
 
@@ -92,5 +93,54 @@ describe('comfort fit removes metal', () => {
     const std = computeMetal(spec({ width: 6, thickness: 1.8, carat: 1 })).cast
     const cf = computeMetal(spec({ width: 6, thickness: 1.8, fit: 'comfort', carat: 1 })).cast
     expect(cf).toBeLessThan(std)
+  })
+})
+
+const cat = (category: ProductCategory, over: Partial<DesignSpec> = {}): DesignSpec =>
+  ({ ...DEFAULT_SPEC, category, ...over })
+
+describe('every category produces a valid weight and price', () => {
+  const categories: ProductCategory[] = ['ring', 'pendant', 'earring', 'bracelet', 'necklace']
+  for (const c of categories) {
+    it(`${c} has positive cast weight and total`, () => {
+      const s = cat(c)
+      const m = computeMetal(s)
+      const p = computePrice(s)
+      expect(m.cast).toBeGreaterThan(0)
+      expect(m.finished).toBeLessThan(m.cast)
+      expect(m.cast).toBeLessThan(m.pour)
+      expect(p.total).toBeGreaterThan(0)
+    })
+  }
+})
+
+describe('non-ring weight relationships hold', () => {
+  it('a pair of earrings weighs about twice a single', () => {
+    const single = computeMetal(cat('earring', { earring: { ...DEFAULT_SPEC.earring, pair: false } })).cast
+    const pair = computeMetal(cat('earring', { earring: { ...DEFAULT_SPEC.earring, pair: true } })).cast
+    expect(pair / single).toBeGreaterThan(1.8)
+    expect(pair / single).toBeLessThan(2.2)
+  })
+  it('a tennis bracelet weighs more than a plain chain bracelet', () => {
+    const tennis = computeMetal(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'tennis' } })).cast
+    const chain = computeMetal(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'chain' } })).cast
+    expect(tennis).toBeGreaterThan(chain)
+  })
+  it('a bangle sweeps more metal than a cuff of the same section', () => {
+    const bangle = computeMetal(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'bangle' } })).cast
+    const cuff = computeMetal(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'cuff' } })).cast
+    expect(bangle).toBeGreaterThan(cuff)
+  })
+  it('a pendant priced with no chain costs less than with a chain', () => {
+    const withChain = computeMetal(cat('pendant', { pendant: { ...DEFAULT_SPEC.pendant, hasChain: true } })).cast
+    const noChain = computeMetal(cat('pendant', { pendant: { ...DEFAULT_SPEC.pendant, hasChain: false } })).cast
+    expect(withChain).toBeGreaterThan(noChain)
+  })
+  it('tennis bracelet prices all its stones, plain chain prices none', () => {
+    const tennis = computePrice(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'tennis', linkCount: 40 } }))
+    const chain = computePrice(cat('bracelet', { bracelet: { ...DEFAULT_SPEC.bracelet, kind: 'chain' } }))
+    expect(tennis.stoneCount).toBe(40)
+    expect(chain.stoneCount).toBe(0)
+    expect(tennis.stoneCost).toBeGreaterThan(chain.stoneCost)
   })
 })

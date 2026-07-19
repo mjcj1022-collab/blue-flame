@@ -6,6 +6,7 @@ import { useDesign } from './state/design'
 import { computeMetal } from './lib/metal'
 import { computePrice } from './lib/pricing'
 import { money } from './lib/units'
+import { CATEGORY_LABEL } from './spec/types'
 
 function Masthead() {
   const spec = useDesign(s => s.spec)
@@ -16,7 +17,7 @@ function Masthead() {
     <header className="mast">
       <div className="mast-in">
         <span className="logo">MAN<em>D</em>REL</span>
-        <span className="tag">Studio · Solitaire</span>
+        <span className="tag">Studio · {CATEGORY_LABEL[spec.category]}</span>
         <span className="mast-fig">{m.finished.toFixed(2)} g finished</span>
         <span className="mast-fig">{m.pour.toFixed(2)} g to pour</span>
         <span className="mast-fig strong">{money(p.total)}</span>

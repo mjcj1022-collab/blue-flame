@@ -1,0 +1,38 @@
+import type { DesignSpec } from '../spec/types'
+import { alloyById } from '../catalog'
+import { stoneDims } from './Stone'
+import { Head } from './Head'
+import { useMetalMaterial } from './material'
+
+/** A set stone facing the viewer, hung from a bail, with a short chain hint. */
+export function Pendant({ spec }: { spec: DesignSpec }) {
+  const alloy = alloyById(spec.metal.alloyId)
+  const metal = useMetalMaterial(alloy)
+  const d = stoneDims(spec.center.shapeId, spec.center.carat)
+  const { bailInner, bailGauge, hasChain } = spec.pendant
+
+  // Stone rotated so its table faces the camera; its length axis now runs in Y.
+  const halfH = d.r * d.lwRatio
+  const bailY = halfH + bailGauge + bailInner / 2
+  const topY = bailY + bailInner / 2 + bailGauge
+
+  return (
+    <group position={[0, 2, 0]}>
+      <group rotation={[Math.PI / 2, 0, 0]}>
+        <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
+          carat={spec.center.carat} settingId={spec.setting.typeId} />
+      </group>
+
+      {/* Bail */}
+      <mesh material={metal} position={[0, bailY, 0]}>
+        <torusGeometry args={[bailInner / 2 + bailGauge / 2, bailGauge / 2, 12, 32]} />
+      </mesh>
+
+      {hasChain && [-1, 1].map(s => (
+        <mesh key={s} material={metal} position={[s * topY * 0.5, topY + halfH * 0.6, 0]} rotation={[0, 0, s * 0.5]}>
+          <cylinderGeometry args={[bailGauge * 0.35, bailGauge * 0.35, halfH * 1.8, 8]} />
+        </mesh>
+      ))}
+    </group>
+  )
+}

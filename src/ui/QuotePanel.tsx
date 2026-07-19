@@ -1,26 +1,83 @@
 import { useDesign } from '../state/design'
-import { computePrice } from '../lib/pricing'
+import { computePrice, stoneUnits } from '../lib/pricing'
 import { alloyById, shapeById, stoneById, settingById, stoneMm } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
+import { CATEGORY_LABEL, type DesignSpec } from '../spec/types'
 
-function techSheet(spec: ReturnType<typeof useDesign.getState>['spec']) {
-  const p = computePrice(spec)
-  const m = p.metal
+function geometryLines(spec: DesignSpec): string[] {
   const alloy = alloyById(spec.metal.alloyId)
+  switch (spec.category) {
+    case 'ring':
+      return [
+        'RING',
+        `  Inside diameter   ${sizeToDiameter(spec.ring.size).toFixed(2)} mm  (US ${formatSize(spec.ring.size)})`,
+        `  Band              ${spec.ring.width.toFixed(1)} x ${spec.ring.thickness.toFixed(1)} mm, ${spec.ring.fit} fit`,
+        `  Hallmark          ${alloy.hallmark}`,
+        `  Resizable         ${settingById(spec.setting.typeId).resizeRange}`
+      ]
+    case 'pendant':
+      return [
+        'PENDANT',
+        `  Bail              ${spec.pendant.bailInner.toFixed(1)} mm opening, ${spec.pendant.bailGauge.toFixed(1)} mm gauge`,
+        `  Chain             ${spec.pendant.hasChain ? `${spec.pendant.chainLength}" at ${spec.pendant.chainGauge.toFixed(1)} mm` : 'None (pendant only)'}`,
+        `  Hallmark          ${alloy.hallmark}`
+      ]
+    case 'earring':
+      return [
+        'EARRINGS',
+        `  Configuration     ${spec.earring.pair ? 'Matched pair' : 'Single'}`,
+        `  Style             ${spec.earring.dropLength > 0 ? `Drop, ${spec.earring.dropLength} mm` : 'Stud'}`,
+        `  Post              ${spec.earring.postLength.toFixed(1)} mm, ${spec.earring.postGauge.toFixed(1)} mm gauge, ${spec.earring.back} back`,
+        `  Hallmark          ${alloy.hallmark}`
+      ]
+    case 'bracelet':
+      return [
+        'BRACELET',
+        `  Type              ${spec.bracelet.kind}`,
+        `  Worn length       ${(spec.bracelet.wristCircumference + spec.bracelet.fitAllowance)} mm  (${((spec.bracelet.wristCircumference + spec.bracelet.fitAllowance) / 25.4).toFixed(2)}")`,
+        spec.bracelet.kind === 'tennis' ? `  Stones            ${spec.bracelet.linkCount}` : `  Section           ${spec.bracelet.width.toFixed(1)} x ${spec.bracelet.thickness.toFixed(1)} mm`,
+        `  Hallmark          ${alloy.hallmark}`
+      ]
+    case 'necklace':
+      return [
+        'NECKLACE',
+        `  Length            ${spec.necklace.length}"`,
+        `  Chain gauge       ${spec.necklace.gauge.toFixed(1)} mm`,
+        `  Pendant           ${spec.necklace.hasPendant ? 'Yes' : 'None'}`,
+        `  Hallmark          ${alloy.hallmark}`
+      ]
+  }
+}
+
+function stoneLines(spec: DesignSpec): string[] {
+  const { count, caratEach } = stoneUnits(spec)
+  if (count === 0) return []
   const shape = shapeById(spec.center.shapeId)
   const stone = stoneById(spec.center.stoneTypeId)
   const setting = settingById(spec.setting.typeId)
-  const mm = stoneMm(shape, spec.center.carat)
+  const mm = stoneMm(shape, caratEach)
+  return [
+    '',
+    'STONE',
+    `  ${count > 1 ? `${count} x ` : 'Center            '}${caratEach.toFixed(2)} ct ${shape.name}, ${mm.length.toFixed(2)} x ${mm.width.toFixed(2)} mm`,
+    `  Material          ${stone.name} - ${stone.variety}, Mohs ${stone.mohs}`,
+    `  Treatment         ${stone.treatment ?? 'None disclosed'}`,
+    `  Setting           ${setting.name} (${setting.variety})`
+  ]
+}
+
+function techSheet(spec: DesignSpec) {
+  const p = computePrice(spec)
+  const m = p.metal
+  const alloy = alloyById(spec.metal.alloyId)
+  const stone = stoneById(spec.center.stoneTypeId)
+  const { count } = stoneUnits(spec)
 
   return [
-    'MANDREL — TECH SHEET',
+    `MANDREL — TECH SHEET  (${CATEGORY_LABEL[spec.category]})`,
     '',
-    'RING',
-    `  Inside diameter   ${sizeToDiameter(spec.ring.size).toFixed(2)} mm  (US ${formatSize(spec.ring.size)})`,
-    `  Band              ${spec.ring.width.toFixed(1)} x ${spec.ring.thickness.toFixed(1)} mm, ${spec.ring.fit} fit`,
-    `  Hallmark          ${alloy.hallmark}`,
-    `  Resizable         ${setting.resizeRange}`,
+    ...geometryLines(spec),
     '',
     'METAL',
     `  Alloy             ${alloy.name}, density ${alloy.density} g/cm3, ${(alloy.fine * 100).toFixed(1)}% ${alloy.symbol}`,
@@ -32,23 +89,22 @@ function techSheet(spec: ReturnType<typeof useDesign.getState>['spec']) {
     `  Sprue + button    ${(m.sprue + m.button).toFixed(2)} g`,
     `  METAL TO POUR     ${m.pour.toFixed(2)} g   (${gToDwt(m.pour).toFixed(2)} dwt)`,
     `  Pattern weight    ${m.patternWax.toFixed(2)} g wax  /  ${m.patternResin.toFixed(2)} g castable resin`,
-    '',
-    'STONE',
-    `  Center            ${spec.center.carat.toFixed(2)} ct ${shape.name}, ${mm.length.toFixed(2)} x ${mm.width.toFixed(2)} mm`,
-    `  Material          ${stone.name} - ${stone.variety}, Mohs ${stone.mohs}`,
-    `  Treatment         ${stone.treatment ?? 'None disclosed'}`,
-    `  Setting           ${setting.name} (${setting.variety})`,
+    ...stoneLines(spec),
     '',
     'PRICE',
     `  Net metal         ${money(p.metalCost)}`,
-    `  Center stone      ${money(p.stoneCost)}`,
-    `  Setting labor     ${money(p.settingFee)}`,
+    ...(count > 0 ? [
+      `  Stones            ${money(p.stoneCost)}`,
+      `  Setting labor     ${money(p.settingFee)}`
+    ] : []),
     `  Cast and finish   ${money(p.finishFee)}`,
     `  ESTIMATE          ${money(p.total)}`,
     '',
     'DISCLOSURE',
-    `  ${stone.labGrown ? 'LABORATORY-GROWN. Must be disclosed on all documents and advertising.' : 'Natural origin. Treatments as noted above.'}`,
-    stone.care ? `  Care: ${stone.care}` : ''
+    count > 0
+      ? `  ${stone.labGrown ? 'LABORATORY-GROWN. Must be disclosed on all documents and advertising.' : 'Natural origin. Treatments as noted above.'}`
+      : '  No center stone.',
+    count > 0 && stone.care ? `  Care: ${stone.care}` : ''
   ].filter(Boolean).join('\n')
 }
 
@@ -56,12 +112,13 @@ export function QuotePanel() {
   const spec = useDesign(s => s.spec)
   const p = computePrice(spec)
   const alloy = alloyById(spec.metal.alloyId)
+  const hasStones = p.stoneCount > 0
 
   const download = () => {
     const blob = new Blob([techSheet(spec)], { type: 'text/plain' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `mandrel-techsheet-${Date.now()}.txt`
+    a.download = `mandrel-${spec.category}-${Date.now()}.txt`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -73,8 +130,8 @@ export function QuotePanel() {
   return (
     <div className="panel-block quote">
       <div className="qline"><span>Net metal — {alloy.name}</span><span>{money(p.metalCost)}</span></div>
-      <div className="qline"><span>Center stone</span><span>{money(p.stoneCost)}</span></div>
-      <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>
+      {hasStones && <div className="qline"><span>{p.stoneCount > 1 ? `${p.stoneCount} stones` : 'Center stone'}</span><span>{money(p.stoneCost)}</span></div>}
+      {hasStones && <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>}
       <div className="qline"><span>Cast, finish, polish</span><span>{money(p.finishFee)}</span></div>
       <div className="qtotal">
         <span className="lbl">Estimate</span>

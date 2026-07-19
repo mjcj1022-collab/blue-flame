@@ -1,4 +1,5 @@
 import type { DesignSpec } from '../spec/types'
+import { usesSetting } from '../spec/types'
 import { ALLOYS, alloyById, settingById, type Alloy } from '../catalog'
 import { computeVolume } from './volume'
 import { OZT } from './units'
@@ -57,10 +58,10 @@ export interface MetalResult {
  * weight to the client and cast weight to the bench; they are not the same.
  */
 export function finishingLoss(spec: DesignSpec, alloy: Alloy): number {
-  let loss = 0.07                                   // standard ring with a head
-  loss += settingById(spec.setting.typeId).finishPenalty
+  let loss = 0.07                                   // standard piece with a head
+  if (usesSetting(spec.category)) loss += settingById(spec.setting.typeId).finishPenalty
   loss += alloy.finishPenalty                       // platinum is slow to finish
-  if (spec.ring.width >= 6) loss += 0.01            // more surface to bring up
+  if (spec.category === 'ring' && spec.ring.width >= 6) loss += 0.01  // more surface to bring up
   return loss
 }
 
