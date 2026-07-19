@@ -19,7 +19,7 @@ function useSculptMaterial(o: SculptObject) {
 export function SculptMesh({ o }: { o: SculptObject }) {
   const { selectedId, select, mode, update } = useModeler()
   const ref = useRef<THREE.Mesh>(null)
-  const geom = useMemo(() => renderGeometry(o), [o.kind, o.size, o.vertices])
+  const geom = useMemo(() => renderGeometry(o), [o.kind, o.size, o.vertices, JSON.stringify(o.params)])
   const material = useSculptMaterial(o)
   const selected = selectedId === o.id
 

@@ -1,13 +1,17 @@
 import * as THREE from 'three'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg'
-import type { SculptObject, PrimitiveKind } from '../state/modeler'
+import { shapeById, stoneMm } from '../catalog'
+import { sizeToDiameter } from './sizing'
+import type { SculptObject, PrimitiveKind, SculptParams, ShankProfile } from '../state/modeler'
 
 export type BooleanOp = 'union' | 'subtract' | 'intersect'
-
 const OP = { union: ADDITION, subtract: SUBTRACTION, intersect: INTERSECTION } as const
+const JEWELRY = new Set(['shank', 'gem', 'head', 'bezel'])
 
-/** Geometry for a primitive at a base size (unit-ish, then transformed by scale). */
+/* ---------- primitives ---------- */
+
 export function primitiveGeometry(kind: PrimitiveKind, size: number): THREE.BufferGeometry {
   const r = size / 2
   switch (kind) {
@@ -20,13 +24,133 @@ export function primitiveGeometry(kind: PrimitiveKind, size: number): THREE.Buff
   }
 }
 
-/** Geometry from baked boolean-result vertices. */
+/* ---------- jewelry builders ---------- */
+
+/** Cross-section of a shank, in mm. X = radial (thickness), Y = axial (width). */
+function profileShape(profile: ShankProfile, width: number, thickness: number): THREE.Shape {
+  const s = new THREE.Shape()
+  const hw = width / 2, ht = thickness / 2
+  switch (profile) {
+    case 'round':
+      s.absellipse(0, 0, ht, hw, 0, Math.PI * 2, false, 0); break
+    case 'knife':
+      s.moveTo(-ht, 0); s.lineTo(0, hw); s.lineTo(ht, 0); s.lineTo(0, -hw); s.closePath(); break
+    case 'comfort':
+      // rounded (domed) interior on the -X side
+      s.moveTo(ht, -hw); s.lineTo(ht, hw); s.quadraticCurveTo(-ht * 1.6, 0, ht, -hw); s.closePath(); break
+    case 'dshape':
+      s.moveTo(-ht, -hw); s.lineTo(-ht, hw); s.quadraticCurveTo(ht * 1.5, 0, -ht, -hw); s.closePath(); break
+    default: // flat
+      s.moveTo(-ht, -hw); s.lineTo(ht, -hw); s.lineTo(ht, hw); s.lineTo(-ht, hw); s.closePath()
+  }
+  return s
+}
+
+function shankGeometry(p: SculptParams): THREE.BufferGeometry {
+  const ringSize = p.ringSize ?? 7
+  const profile = p.profile ?? 'round'
+  const width = p.width ?? 2.2
+  const thickness = p.thickness ?? 1.8
+  const R = sizeToDiameter(ringSize) / 2 + thickness / 2   // centreline radius
+
+  const pts: THREE.Vector3[] = []
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * Math.PI * 2
+    pts.push(new THREE.Vector3(Math.cos(a) * R, Math.sin(a) * R, 0))
+  }
+  const path = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0)
+  const geo = new THREE.ExtrudeGeometry(profileShape(profile, width, thickness), {
+    steps: 200, bevelEnabled: false, extrudePath: path
+  })
+  geo.computeVertexNormals()
+  return geo
+}
+
+function gemGeometry(p: SculptParams): THREE.BufferGeometry {
+  const shape = shapeById(p.shapeId ?? 'rd')
+  const width = stoneMm(shape, Math.max(p.carat ?? 1, 0.02)).width
+  const r = width / 2, crownH = width * 0.16, pavH = width * 0.43, girdleH = width * 0.03, tableR = r * 0.55
+  const seg = shape.segments
+
+  const pav = new THREE.ConeGeometry(r, pavH, seg)
+  pav.rotateX(Math.PI); pav.translate(0, -(pavH / 2 + girdleH / 2), 0)
+  const girdle = new THREE.CylinderGeometry(r, r, girdleH, seg)
+  const crown = new THREE.CylinderGeometry(tableR, r, crownH, seg)
+  crown.translate(0, crownH / 2 + girdleH / 2, 0)
+
+  const merged = mergeGeometries([pav, girdle, crown], false) ?? girdle
+  merged.scale(1, 1, shape.lwRatio)
+  merged.computeVertexNormals()
+  return merged
+}
+
+function headGeometry(p: SculptParams): THREE.BufferGeometry {
+  const prongs = p.prongs ?? 4
+  const stoneW = p.stoneW ?? 6.5
+  const h = p.height ?? 4
+  const r = stoneW / 2
+  const prongR = 0.42 + stoneW * 0.012
+
+  const parts: THREE.BufferGeometry[] = []
+  for (let i = 0; i < prongs; i++) {
+    const a = (i / prongs) * Math.PI * 2 + Math.PI / prongs
+    const c = new THREE.CylinderGeometry(prongR * 0.85, prongR, h, 12)
+    c.translate(Math.cos(a) * r * 0.99, 0, Math.sin(a) * r * 0.99)
+    parts.push(c)
+    const bead = new THREE.SphereGeometry(prongR * 0.9, 10, 8)
+    bead.translate(Math.cos(a) * r * 0.94, h / 2, Math.sin(a) * r * 0.94)
+    parts.push(bead)
+  }
+  const gallery = new THREE.TorusGeometry(r * 0.82, prongR * 0.85, 10, 44)
+  gallery.rotateX(Math.PI / 2); gallery.translate(0, -h * 0.3, 0)
+  parts.push(gallery)
+
+  const merged = mergeGeometries(parts, false) ?? gallery
+  merged.computeVertexNormals()
+  return merged
+}
+
+function bezelGeometry(p: SculptParams): THREE.BufferGeometry {
+  const stoneW = p.stoneW ?? 6.5
+  const height = p.height ?? 3
+  const wall = p.wall ?? 0.6
+  const rIn = stoneW / 2, rOut = stoneW / 2 + wall
+  const pts = [
+    new THREE.Vector2(rIn, 0), new THREE.Vector2(rOut, 0),
+    new THREE.Vector2(rOut, height), new THREE.Vector2(rIn, height),
+    new THREE.Vector2(rIn, 0)
+  ]
+  const geo = new THREE.LatheGeometry(pts, 56)
+  geo.computeVertexNormals()
+  return geo
+}
+
+function jewelryGeometry(kind: string, params: SculptParams): THREE.BufferGeometry {
+  switch (kind) {
+    case 'shank': return shankGeometry(params)
+    case 'gem': return gemGeometry(params)
+    case 'head': return headGeometry(params)
+    case 'bezel': return bezelGeometry(params)
+    default: return new THREE.BoxGeometry(1, 1, 1)
+  }
+}
+
+/* ---------- shared geometry access ---------- */
+
 function geomFromVertices(vertices: number[]): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry()
   g.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
   g.computeVertexNormals()
   return g
 }
+
+function baseGeometry(o: SculptObject): THREE.BufferGeometry {
+  if (o.kind === 'mesh' && o.vertices) return geomFromVertices(o.vertices)
+  if (JEWELRY.has(o.kind)) return jewelryGeometry(o.kind, o.params ?? {})
+  return primitiveGeometry(o.kind as PrimitiveKind, o.size)
+}
+
+export const renderGeometry = (o: SculptObject): THREE.BufferGeometry => baseGeometry(o)
 
 export function objectMatrix(o: SculptObject): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
@@ -36,22 +160,17 @@ export function objectMatrix(o: SculptObject): THREE.Matrix4 {
   )
 }
 
-/** Object geometry in world space (transform baked in). */
 export function bakedGeometry(o: SculptObject): THREE.BufferGeometry {
-  const g = o.kind === 'mesh' && o.vertices ? geomFromVertices(o.vertices) : primitiveGeometry(o.kind as PrimitiveKind, o.size)
+  const g = baseGeometry(o)
   g.applyMatrix4(objectMatrix(o))
   return g
 }
 
-/**
- * Boolean of two objects. Returns the world-space result geometry vertices,
- * ready to store as a new 'mesh' object with an identity transform.
- */
+/* ---------- boolean + export ---------- */
+
 export function booleanOp(a: SculptObject, b: SculptObject, op: BooleanOp): number[] {
-  const brushA = new Brush(bakedGeometry(a))
-  brushA.updateMatrixWorld()
-  const brushB = new Brush(bakedGeometry(b))
-  brushB.updateMatrixWorld()
+  const brushA = new Brush(bakedGeometry(a)); brushA.updateMatrixWorld()
+  const brushB = new Brush(bakedGeometry(b)); brushB.updateMatrixWorld()
   const evaluator = new Evaluator()
   evaluator.useGroups = false
   const result = evaluator.evaluate(brushA, brushB, OP[op])
@@ -59,17 +178,43 @@ export function booleanOp(a: SculptObject, b: SculptObject, op: BooleanOp): numb
   return Array.from(pos.array as Float32Array)
 }
 
-export function renderGeometry(o: SculptObject): THREE.BufferGeometry {
-  return o.kind === 'mesh' && o.vertices ? geomFromVertices(o.vertices) : primitiveGeometry(o.kind as PrimitiveKind, o.size)
-}
-
-/** Merge every object into one watertight-ish mesh and emit ASCII STL. */
 export function modelerToStl(objects: SculptObject[]): string {
   const group = new THREE.Group()
-  for (const o of objects) {
-    group.add(new THREE.Mesh(bakedGeometry(o)))
-  }
+  for (const o of objects) group.add(new THREE.Mesh(bakedGeometry(o)))
   const stl = new STLExporter().parse(group, { binary: false })
   group.traverse(n => { const g = (n as THREE.Mesh).geometry; if (g) g.dispose() })
   return stl
+}
+
+/* ---------- volume → weight bridge ---------- */
+
+/** Signed-tetrahedron volume of a geometry, mm³ (geometry already in mm). */
+export function meshVolume(geo: THREE.BufferGeometry): number {
+  const pos = geo.getAttribute('position')
+  const idx = geo.getIndex()
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3()
+  let vol = 0
+  const tri = (i0: number, i1: number, i2: number) => {
+    a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2)
+    vol += a.dot(b.clone().cross(c)) / 6
+  }
+  if (idx) for (let i = 0; i < idx.count; i += 3) tri(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2))
+  else for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2)
+  return Math.abs(vol)
+}
+
+/** Total metal volume of the sculpt (gems and cutters excluded), mm³. */
+export function sculptMetalVolume(objects: SculptObject[]): number {
+  let vol = 0
+  for (const o of objects) {
+    if (o.material !== 'metal') continue
+    const g = bakedGeometry(o)
+    vol += meshVolume(g)
+    g.dispose()
+  }
+  return vol
+}
+
+export function sculptGemCarats(objects: SculptObject[]): number {
+  return objects.filter(o => o.kind === 'gem').reduce((s, o) => s + (o.params?.carat ?? 0), 0)
 }

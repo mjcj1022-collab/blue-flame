@@ -1,21 +1,81 @@
 import { useState } from 'react'
-import { useModeler, SCULPT_COLORS, type PrimitiveKind, type SculptMaterial } from '../state/modeler'
-import { booleanOp, modelerToStl, type BooleanOp } from '../lib/sculpt'
+import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
+import { booleanOp, modelerToStl, sculptMetalVolume, sculptGemCarats, type BooleanOp } from '../lib/sculpt'
+import { ALLOYS, SHAPES, alloyById } from '../catalog'
+import { money } from '../lib/units'
 
-const PRIMS: [PrimitiveKind, string][] = [
-  ['box', 'Box'], ['sphere', 'Sphere'], ['cylinder', 'Cylinder'], ['cone', 'Cone'], ['torus', 'Torus'], ['tube', 'Tube']
-]
+const OZT = 31.1035
+const PRIMS: [PrimitiveKind, string][] = [['box', 'Box'], ['sphere', 'Sphere'], ['cylinder', 'Cylinder'], ['cone', 'Cone'], ['torus', 'Torus'], ['tube', 'Tube']]
+const PARTS: [JewelryKind, string][] = [['shank', 'Shank'], ['gem', 'Gem'], ['head', 'Prong head'], ['bezel', 'Bezel']]
+const PROFILES: [ShankProfile, string][] = [['round', 'Round'], ['flat', 'Flat'], ['dshape', 'D-shape'], ['knife', 'Knife'], ['comfort', 'Comfort']]
 const OPS: [BooleanOp, string][] = [['union', 'Union'], ['subtract', 'Subtract'], ['intersect', 'Intersect']]
 const KEY = 'mandrel.sculpt.v1'
 
+function Slider({ label, value, min, max, step, unit, on }: { label: string; value: number; min: number; max: number; step: number; unit: string; on: (v: number) => void }) {
+  return (
+    <>
+      <div className="row" style={{ marginTop: 12 }}><label>{label}</label><span className="val">{value.toFixed(step < 1 ? 2 : 0)}{unit}</span></div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e => on(+e.target.value)} />
+    </>
+  )
+}
+
+function ParamControls({ sel }: { sel: SculptObject }) {
+  const { updateParams } = useModeler()
+  const p = sel.params ?? {}
+  if (sel.kind === 'shank') return (
+    <>
+      <Slider label="Ring size" value={p.ringSize ?? 7} min={3} max={13} step={0.25} unit="" on={v => updateParams(sel.id, { ringSize: v })} />
+      <div className="row" style={{ marginTop: 12 }}><label>Profile</label></div>
+      <div className="opts c2">
+        {PROFILES.map(([id, label]) => <button key={id} className="opt" aria-pressed={(p.profile ?? 'round') === id} onClick={() => updateParams(sel.id, { profile: id })}>{label}</button>)}
+      </div>
+      <Slider label="Width" value={p.width ?? 2.2} min={1.2} max={10} step={0.1} unit=" mm" on={v => updateParams(sel.id, { width: v })} />
+      <Slider label="Thickness" value={p.thickness ?? 1.8} min={1} max={4} step={0.1} unit=" mm" on={v => updateParams(sel.id, { thickness: v })} />
+    </>
+  )
+  if (sel.kind === 'gem') return (
+    <>
+      <div className="row" style={{ marginTop: 12 }}><label>Cut</label></div>
+      <select className="lib-name" style={{ width: '100%' }} value={p.shapeId ?? 'rd'} onChange={e => updateParams(sel.id, { shapeId: e.target.value })}>
+        {SHAPES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+      <Slider label="Carat" value={p.carat ?? 1} min={0.1} max={6} step={0.05} unit=" ct" on={v => updateParams(sel.id, { carat: v })} />
+    </>
+  )
+  if (sel.kind === 'head') return (
+    <>
+      <Slider label="Prongs" value={p.prongs ?? 4} min={3} max={8} step={1} unit="" on={v => updateParams(sel.id, { prongs: v })} />
+      <Slider label="Stone width" value={p.stoneW ?? 6.5} min={3} max={16} step={0.1} unit=" mm" on={v => updateParams(sel.id, { stoneW: v })} />
+      <Slider label="Height" value={p.height ?? 4} min={2} max={9} step={0.1} unit=" mm" on={v => updateParams(sel.id, { height: v })} />
+    </>
+  )
+  if (sel.kind === 'bezel') return (
+    <>
+      <Slider label="Stone width" value={p.stoneW ?? 6.5} min={3} max={16} step={0.1} unit=" mm" on={v => updateParams(sel.id, { stoneW: v })} />
+      <Slider label="Height" value={p.height ?? 3} min={1.5} max={7} step={0.1} unit=" mm" on={v => updateParams(sel.id, { height: v })} />
+      <Slider label="Wall" value={p.wall ?? 0.6} min={0.3} max={1.5} step={0.05} unit=" mm" on={v => updateParams(sel.id, { wall: v })} />
+    </>
+  )
+  return null
+}
+
 export function ModelerPanel() {
-  const { objects, selectedId, mode, add, addMesh, update, remove, duplicate, select, setMode, clear, load } = useModeler()
+  const { objects, selectedId, mode, alloyId, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const others = objects.filter(o => o.id !== selectedId)
-  const [otherId, setOtherId] = useState<string>('')
+  const [otherId, setOtherId] = useState('')
+  const [count, setCount] = useState(8)
   const [msg, setMsg] = useState('')
-
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
+
+  const alloy = alloyById(alloyId)
+  const vol = sculptMetalVolume(objects)
+  const castG = (vol / 1000) * alloy.density
+  const metalCost = alloy.precious
+    ? ((castG * alloy.fine) / OZT) * alloy.spot * (1 + alloy.premium)
+    : castG * alloy.perGram * (1 + alloy.premium)
+  const carats = sculptGemCarats(objects)
 
   const doBoolean = (op: BooleanOp) => {
     const b = objects.find(o => o.id === otherId)
@@ -31,8 +91,7 @@ export function ModelerPanel() {
   const exportStl = () => {
     if (!objects.length) { flash('Nothing to export.'); return }
     const blob = new Blob([modelerToStl(objects)], { type: 'model/stl' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = `mandrel-sculpt-${Date.now()}.stl`; a.click(); URL.revokeObjectURL(a.href)
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `mandrel-sculpt-${Date.now()}.stl`; a.click(); URL.revokeObjectURL(a.href)
   }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(objects)); flash('Saved.') } catch { flash('Save failed.') } }
   const restore = () => { try { const raw = localStorage.getItem(KEY); if (raw) { load(JSON.parse(raw)); flash('Loaded.') } else flash('No saved sculpt.') } catch { flash('Load failed.') } }
@@ -40,7 +99,11 @@ export function ModelerPanel() {
   return (
     <>
       <div className="panel-block">
-        <h4>Add shape</h4>
+        <h4>Jewelry parts</h4>
+        <div className="opts c2">
+          {PARTS.map(([k, label]) => <button key={k} className="opt tpl" onClick={() => add(k)}>{label}</button>)}
+        </div>
+        <h4 style={{ marginTop: 18 }}>Primitives</h4>
         <div className="opts c2">
           {PRIMS.map(([k, label]) => <button key={k} className="opt" onClick={() => add(k)}>{label}</button>)}
         </div>
@@ -54,9 +117,22 @@ export function ModelerPanel() {
         </div>
       </div>
 
+      <div className="panel-block metalreq">
+        <h4>Metal
+          <select className="unit" value={alloyId} onChange={e => setAlloy(e.target.value)} style={{ marginLeft: 'auto' }}>
+            {ALLOYS.map(a => <option key={a.id} value={a.id}>{a.short}</option>)}
+          </select>
+        </h4>
+        <div className="qline"><span>Volume</span><span>{Math.round(vol).toLocaleString()} mm³</span></div>
+        <div className="qline hi"><span>Cast weight <i>{alloy.name}</i></span><span>{castG.toFixed(2)} g</span></div>
+        <div className="qline sub"><span>Metal value</span><span>{money(metalCost)}</span></div>
+        {carats > 0 && <div className="qline"><span>Gemstones</span><span>{carats.toFixed(2)} ct</span></div>}
+        <p className="disc">Weight is the summed volume of every metal part × alloy density — the same engine the configurator uses. Overlaps double-count until you boolean-union them.</p>
+      </div>
+
       <div className="panel-block">
         <h4>Objects <span className="mfg-sum"><b className="ok">{objects.length}</b></span></h4>
-        {objects.length === 0 && <p className="disc">No shapes yet. Add one above.</p>}
+        {objects.length === 0 && <p className="disc">Add a part or primitive above.</p>}
         {objects.map(o => (
           <div key={o.id} className={`lib-row obj-row ${o.id === selectedId ? 'sel' : ''}`} onClick={() => select(o.id)}>
             <div className="lib-meta"><b>{o.name}</b><small>{o.kind}{o.material === 'gem' ? ' · gem' : ''}</small></div>
@@ -79,16 +155,20 @@ export function ModelerPanel() {
             ))}
           </div>
 
-          {sel.kind !== 'mesh' && (
-            <>
-              <div className="row" style={{ marginTop: 14 }}><label>Size</label><span className="val">{sel.size.toFixed(1)}</span></div>
-              <input type="range" min={1} max={30} step={0.5} value={sel.size} onChange={e => update(sel.id, { size: +e.target.value })} />
-            </>
+          <ParamControls sel={sel} />
+
+          {!['shank', 'gem', 'head', 'bezel'].includes(sel.kind) && sel.kind !== 'mesh' && (
+            <Slider label="Size" value={sel.size} min={1} max={30} step={0.5} unit="" on={v => update(sel.id, { size: v })} />
           )}
-          <div className="row" style={{ marginTop: 14 }}><label>Height</label><span className="val">{sel.position[1].toFixed(1)}</span></div>
-          <input type="range" min={0} max={30} step={0.5} value={sel.position[1]} onChange={e => update(sel.id, { position: [sel.position[0], +e.target.value, sel.position[2]] })} />
-          <div className="row" style={{ marginTop: 12 }}><label>Uniform scale</label><span className="val">{sel.scale[0].toFixed(2)}×</span></div>
-          <input type="range" min={0.1} max={4} step={0.05} value={sel.scale[0]} onChange={e => { const v = +e.target.value; update(sel.id, { scale: [v, v, v] }) }} />
+          <Slider label="Height" value={sel.position[1]} min={-10} max={30} step={0.5} unit="" on={v => update(sel.id, { position: [sel.position[0], v, sel.position[2]] })} />
+          <Slider label="Uniform scale" value={sel.scale[0]} min={0.1} max={4} step={0.05} unit="×" on={v => update(sel.id, { scale: [v, v, v] })} />
+
+          <h4 style={{ marginTop: 20 }}>Array <small style={{ color: '#6E787B', fontWeight: 400 }}>eternity · halo · pavé</small></h4>
+          <div className="row"><label>Count</label><input className="lib-name" style={{ width: 64 }} type="number" min={2} max={60} value={count} onChange={e => setCount(Math.max(2, +e.target.value))} /></div>
+          <div className="opts c2" style={{ marginTop: 8 }}>
+            <button className="opt" onClick={() => arrayCircular(sel.id, count)}>Ring array</button>
+            <button className="opt" onClick={() => arrayLinear(sel.id, count, sel.size || 4)}>Row array</button>
+          </div>
 
           <h4 style={{ marginTop: 20 }}>Boolean</h4>
           <select className="lib-name" style={{ width: '100%' }} value={otherId} onChange={e => setOtherId(e.target.value)}>
@@ -98,19 +178,12 @@ export function ModelerPanel() {
           <div className="opts" style={{ marginTop: 8 }}>
             {OPS.map(([op, label]) => <button key={op} className="opt" onClick={() => doBoolean(op)}>{label}</button>)}
           </div>
-          <p className="disc">Subtract removes the second shape from this one. The result is a single new object.</p>
         </div>
       )}
 
       <div className="panel-block quote">
-        <div className="qact">
-          <button className="primary" onClick={exportStl}>Export STL</button>
-          <button className="ghost" onClick={save}>Save</button>
-          <button className="ghost" onClick={restore}>Load</button>
-        </div>
-        <div className="qact" style={{ marginTop: 8 }}>
-          <button className="ghost" onClick={clear}>Clear all</button>
-        </div>
+        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={save}>Save</button><button className="ghost" onClick={restore}>Load</button></div>
+        <div className="qact" style={{ marginTop: 8 }}><button className="ghost" onClick={clear}>Clear all</button></div>
         {msg && <p className="disc">{msg}</p>}
       </div>
     </>
