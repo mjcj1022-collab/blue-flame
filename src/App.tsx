@@ -31,7 +31,7 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
   return (
     <header className="mast">
       <div className="mast-in">
-        <span className="logo">BFG&nbsp;<em>REQUEST</em></span>
+        <span className="logo">BLUE&nbsp;<em>FLAME</em></span>
         <div className="mode-tabs">
           <button aria-pressed={mode === 'design'} onClick={() => setMode('design')}>Design</button>
           <button aria-pressed={mode === 'model'} onClick={() => setMode('model')}>Sculpt</button>
