@@ -144,6 +144,15 @@ table.cmp td.best{color:var(--patina);font-weight:700}
 .xyz input:focus{border-color:var(--karat);outline:none}
 select.lib-name{appearance:none;-webkit-appearance:none}
 
+/* order pipeline */
+.pipeline{display:flex;flex-wrap:wrap;gap:2px}
+.pipeline .stage{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0}
+.pipeline .stage .dot{width:12px;height:12px;border-radius:50%;background:var(--graphite-2);border:1px solid var(--rule-dark)}
+.pipeline .stage .lbl{font-family:var(--mono);font-size:7.5px;letter-spacing:.05em;text-transform:uppercase;color:#6E787B}
+.pipeline .stage.done .dot{background:var(--patina);border-color:var(--patina)}
+.pipeline .stage.now .dot{background:var(--karat);border-color:var(--karat);box-shadow:0 0 0 3px rgba(198,162,101,.2)}
+.pipeline .stage.now .lbl{color:var(--karat-lt)}
+
 /* variants */
 .v-acts{display:flex;gap:4px;justify-content:flex-end}
 table.cmp.variants td,table.cmp.variants th{white-space:nowrap}

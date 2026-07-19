@@ -7,6 +7,7 @@ import { QuotePanel } from './ui/QuotePanel'
 import { ProductionPanel } from './ui/ProductionPanel'
 import { AttributesPanel } from './ui/AttributesPanel'
 import { VariantsPanel } from './ui/VariantsPanel'
+import { OrderPanel } from './ui/OrderPanel'
 import { LibraryPanel } from './ui/LibraryPanel'
 import { ModelerPanel } from './ui/ModelerPanel'
 import { MetalGenerator } from './ui/MetalGenerator'
@@ -81,6 +82,7 @@ export default function App() {
                 <VariantsPanel />
                 <MetalPanel />
                 <ProductionPanel />
+                <OrderPanel />
                 <LibraryPanel />
               </div>
               <QuotePanel />

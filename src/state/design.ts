@@ -14,6 +14,8 @@ interface DesignStore {
   setMarket: (patch: Partial<Market>) => void
   shop: { name: string; hideCost: boolean }
   setShop: (patch: Partial<{ name: string; hideCost: boolean }>) => void
+  orderStage: number
+  setOrderStage: (i: number) => void
   viewWire: boolean
   toggleWire: () => void
   explode: number
@@ -64,6 +66,8 @@ export const useDesign = create<DesignStore>(set => ({
   setMarket: patch => { applyMarket(patch); set(s => ({ market: { ...s.market, ...patch }, spec: { ...s.spec } })) },
   shop: { name: 'Blue Flame', hideCost: false },
   setShop: patch => set(s => ({ shop: { ...s.shop, ...patch } })),
+  orderStage: 0,
+  setOrderStage: i => set({ orderStage: Math.max(0, Math.min(6, i)) }),
   viewWire: false,
   toggleWire: () => set(s => ({ viewWire: !s.viewWire })),
   explode: 0,
