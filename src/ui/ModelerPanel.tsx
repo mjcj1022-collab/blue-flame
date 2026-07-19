@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
-import { booleanOp, modelerToStl, sculptMetalVolume, sculptGemCarats, type BooleanOp } from '../lib/sculpt'
-import { ALLOYS, SHAPES, alloyById } from '../catalog'
+import { booleanOp, modelerToStl, sculptMetalVolume, sculptGemCarats, boundingSize, type BooleanOp } from '../lib/sculpt'
+import { ALLOYS, SHAPES, alloyById, shapeById, stoneMm } from '../catalog'
 import { money } from '../lib/units'
+
+const DEG = 180 / Math.PI
+const round1 = (n: number) => Math.round(n * 10) / 10
 
 const OZT = 31.1035
 const PRIMS: [PrimitiveKind, string][] = [['box', 'Box'], ['sphere', 'Sphere'], ['cylinder', 'Cylinder'], ['cone', 'Cone'], ['torus', 'Torus'], ['tube', 'Tube']]
@@ -61,13 +64,30 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, alloyId, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, alloyId, snap, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
+  const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
   const [otherId, setOtherId] = useState('')
+  const [seatTarget, setSeatTarget] = useState('')
   const [count, setCount] = useState(8)
   const [msg, setMsg] = useState('')
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
+
+  const metalObjects = objects.filter(o => o.material === 'metal' && o.id !== selectedId)
+
+  const boreSeat = (gem: SculptObject) => {
+    const metalObj = objects.find(o => o.id === seatTarget)
+    if (!metalObj) { flash('Choose the metal to seat the gem into.'); return }
+    const gemW = stoneMm(shapeById(gem.params?.shapeId ?? 'rd'), gem.params?.carat ?? 1).width
+    const cutter: SculptObject = { id: 'cut', kind: 'cone', name: 'cutter', position: [gem.position[0], gem.position[1] - gemW * 0.1, gem.position[2]], rotation: [Math.PI, 0, 0], scale: [1, 1, 1], size: gemW * 1.15, material: 'metal', color: 0 }
+    try {
+      const vertices = booleanOp(metalObj, cutter, 'subtract')
+      if (!vertices.length) { flash('Gem isn’t over the metal — position it above the part first.'); return }
+      addMesh({ kind: 'mesh', vertices, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: metalObj.material, color: metalObj.color, name: `${metalObj.name} seated` })
+      remove(metalObj.id); setSeatTarget('')
+    } catch { flash('Seat failed on this geometry.') }
+  }
 
   const alloy = alloyById(alloyId)
   const vol = sculptMetalVolume(objects)
@@ -115,6 +135,10 @@ export function ModelerPanel() {
             </button>
           ))}
         </div>
+        <label className="filter-row" style={{ marginTop: 12 }}>
+          <input type="checkbox" checked={snap} onChange={toggleSnap} />
+          Snap to grid<small>0.5 mm · 15°</small>
+        </label>
       </div>
 
       <div className="panel-block metalreq">
@@ -162,6 +186,38 @@ export function ModelerPanel() {
           )}
           <Slider label="Height" value={sel.position[1]} min={-10} max={30} step={0.5} unit="" on={v => update(sel.id, { position: [sel.position[0], v, sel.position[2]] })} />
           <Slider label="Uniform scale" value={sel.scale[0]} min={0.1} max={4} step={0.05} unit="×" on={v => update(sel.id, { scale: [v, v, v] })} />
+
+          <div className="row" style={{ marginTop: 14 }}><label>Dimensions</label><span className="val">{dims[0].toFixed(1)} × {dims[1].toFixed(1)} × {dims[2].toFixed(1)} mm</span></div>
+          <div className="subhead" style={{ marginTop: 10 }}>Position (mm)</div>
+          <div className="xyz">
+            {[0, 1, 2].map(i => (
+              <input key={i} type="number" step={0.5} value={round1(sel.position[i])}
+                onChange={e => { const p = [...sel.position] as [number, number, number]; p[i] = +e.target.value; update(sel.id, { position: p }) }} />
+            ))}
+          </div>
+          <div className="subhead" style={{ marginTop: 8 }}>Rotation (°)</div>
+          <div className="xyz">
+            {[0, 1, 2].map(i => (
+              <input key={i} type="number" step={5} value={Math.round(sel.rotation[i] * DEG)}
+                onChange={e => { const r = [...sel.rotation] as [number, number, number]; r[i] = (+e.target.value) / DEG; update(sel.id, { rotation: r }) }} />
+            ))}
+          </div>
+          <div className="opts c2" style={{ marginTop: 10 }}>
+            <button className="opt" onClick={() => mirror(sel.id)}>Mirror X</button>
+            <button className="opt" onClick={() => centerObject(sel.id)}>Center X/Z</button>
+          </div>
+
+          {sel.kind === 'gem' && (
+            <>
+              <h4 style={{ marginTop: 20 }}>Auto-seat</h4>
+              <select className="lib-name" style={{ width: '100%' }} value={seatTarget} onChange={e => setSeatTarget(e.target.value)}>
+                <option value="">Bore seat into…</option>
+                {metalObjects.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+              <div className="opts" style={{ marginTop: 8 }}><button className="opt" onClick={() => boreSeat(sel)}>Bore seat</button></div>
+              <p className="disc">Cuts a conical seat into the chosen metal directly below the gem.</p>
+            </>
+          )}
 
           <h4 style={{ marginTop: 20 }}>Array <small style={{ color: '#6E787B', fontWeight: 400 }}>eternity · halo · pavé</small></h4>
           <div className="row"><label>Count</label><input className="lib-name" style={{ width: 64 }} type="number" min={2} max={60} value={count} onChange={e => setCount(Math.max(2, +e.target.value))} /></div>

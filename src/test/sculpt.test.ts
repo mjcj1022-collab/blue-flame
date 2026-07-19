@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume } from '../lib/sculpt'
+import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume, boundingSize } from '../lib/sculpt'
 import type { SculptObject, PrimitiveKind } from '../state/modeler'
 
 const obj = (over: Partial<SculptObject> & { kind: SculptObject['kind'] }): SculptObject => ({
@@ -69,5 +69,21 @@ describe('jewelry builders + weight bridge', () => {
     const small = meshVolume(bakedGeometry(obj({ kind: 'shank', params: { ringSize: 4 } })))
     const large = meshVolume(bakedGeometry(obj({ kind: 'shank', params: { ringSize: 12 } })))
     expect(large).toBeGreaterThan(small)
+  })
+
+  it('bounding size reports real millimetres, scaled by transform', () => {
+    const [w, h, d] = boundingSize(obj({ kind: 'box', size: 8 }))
+    expect(w).toBeCloseTo(8, 1)
+    expect(h).toBeCloseTo(8, 1)
+    expect(d).toBeCloseTo(8, 1)
+    const scaled = boundingSize(obj({ kind: 'box', size: 8, scale: [2, 1, 1] }))
+    expect(scaled[0]).toBeCloseTo(16, 1)
+  })
+
+  it('auto-seat: subtracting a cone cutter leaves a seated result', () => {
+    const metal = obj({ kind: 'box', size: 10 })
+    const cutter = obj({ kind: 'cone', size: 6, position: [0, 5, 0], rotation: [Math.PI, 0, 0] })
+    const verts = booleanOp(metal, cutter, 'subtract')
+    expect(verts.length).toBeGreaterThan(0)
   })
 })

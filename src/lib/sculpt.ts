@@ -218,3 +218,13 @@ export function sculptMetalVolume(objects: SculptObject[]): number {
 export function sculptGemCarats(objects: SculptObject[]): number {
   return objects.filter(o => o.kind === 'gem').reduce((s, o) => s + (o.params?.carat ?? 0), 0)
 }
+
+/** Bounding-box dimensions of one object, in mm [w, h, d]. */
+export function boundingSize(o: SculptObject): [number, number, number] {
+  const g = bakedGeometry(o)
+  g.computeBoundingBox()
+  const b = g.boundingBox
+  g.dispose()
+  if (!b) return [0, 0, 0]
+  return [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z]
+}

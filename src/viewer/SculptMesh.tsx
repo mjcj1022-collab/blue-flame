@@ -16,8 +16,10 @@ function useSculptMaterial(o: SculptObject) {
   }, [o.material, o.color])
 }
 
+const snapTo = (v: number, step: number) => Math.round(v / step) * step
+
 export function SculptMesh({ o }: { o: SculptObject }) {
-  const { selectedId, select, mode, update } = useModeler()
+  const { selectedId, select, mode, update, snap } = useModeler()
   const ref = useRef<THREE.Mesh>(null)
   const geom = useMemo(() => renderGeometry(o), [o.kind, o.size, o.vertices, JSON.stringify(o.params)])
   const material = useSculptMaterial(o)
@@ -43,9 +45,10 @@ export function SculptMesh({ o }: { o: SculptObject }) {
   const commit = () => {
     const m = ref.current
     if (!m) return
+    const g = Math.PI / 12   // 15° rotation grid
     update(o.id, {
-      position: [m.position.x, m.position.y, m.position.z],
-      rotation: [m.rotation.x, m.rotation.y, m.rotation.z],
+      position: snap ? [snapTo(m.position.x, 0.5), snapTo(m.position.y, 0.5), snapTo(m.position.z, 0.5)] : [m.position.x, m.position.y, m.position.z],
+      rotation: snap ? [snapTo(m.rotation.x, g), snapTo(m.rotation.y, g), snapTo(m.rotation.z, g)] : [m.rotation.x, m.rotation.y, m.rotation.z],
       scale: [m.scale.x, m.scale.y, m.scale.z]
     })
   }

@@ -75,6 +75,10 @@ interface ModelerStore {
   selectedId: string | null
   mode: TransformMode
   alloyId: string
+  snap: boolean
+  toggleSnap: () => void
+  mirror: (id: string) => void
+  centerObject: (id: string) => void
   add: (kind: SculptKind) => void
   addMesh: (obj: Omit<SculptObject, 'id' | 'name'> & { name?: string }) => string
   update: (id: string, patch: Partial<SculptObject>) => void
@@ -95,6 +99,18 @@ export const useModeler = create<ModelerStore>((set, get) => ({
   selectedId: null,
   mode: 'translate',
   alloyId: '14ky',
+  snap: false,
+
+  toggleSnap: () => set(s => ({ snap: !s.snap })),
+
+  mirror: id => {
+    const src = get().objects.find(o => o.id === id)
+    if (!src) return
+    const copy: SculptObject = { ...src, id: newId(), name: `${src.name} mirror`, position: [-src.position[0], src.position[1], src.position[2]], scale: [-src.scale[0], src.scale[1], src.scale[2]] }
+    set(s => ({ objects: [...s.objects, copy], selectedId: copy.id }))
+  },
+
+  centerObject: id => set(s => ({ objects: s.objects.map(o => o.id === id ? { ...o, position: [0, o.position[1], 0] } : o) })),
 
   add: kind => {
     const n = get().objects.filter(o => o.kind === kind).length + 1

@@ -130,6 +130,9 @@ table.cmp td.best{color:var(--patina);font-weight:700}
 .modeler-empty b{display:block;font-size:14px;color:#B7BEC1;margin-bottom:6px;font-weight:600}
 .obj-row{cursor:pointer;padding:8px 8px;border:1px solid transparent;border-bottom:1px solid var(--rule-dark)}
 .obj-row.sel{border-color:var(--karat);background:rgba(156,122,60,.1)}
+.xyz{display:flex;gap:6px}
+.xyz input{flex:1;min-width:0;width:100%;background:var(--graphite-2);border:1px solid var(--rule-dark);color:#C4CBCD;font-family:var(--mono);font-size:11px;padding:7px 4px;text-align:center}
+.xyz input:focus{border-color:var(--karat);outline:none}
 select.lib-name{appearance:none;-webkit-appearance:none}
 
 /* grading */
