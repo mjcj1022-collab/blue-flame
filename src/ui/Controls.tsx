@@ -1,10 +1,10 @@
 import { useDesign } from '../state/design'
-import { ALLOYS, SHAPES, STONES, SETTINGS, shapeById, stoneMm } from '../catalog'
+import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, shapeById, stoneMm } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice } from '../lib/sizing'
 import { guardrails } from '../lib/pricing'
 import {
   type ProductCategory, type BraceletKind, type EarringBack,
-  CATEGORY_LABEL, hasCenterStone
+  CATEGORY_LABEL, hasCenterStone, stoneOnPiece, NO_STONE
 } from '../spec/types'
 
 const hex = (n: number) => '#' + n.toString(16).padStart(6, '0')
@@ -35,6 +35,21 @@ function CategorySwitch() {
         {CATEGORIES.map(c => (
           <button key={c} className="opt" aria-pressed={spec.category === c} onClick={() => setCategory(c)}>
             {CATEGORY_LABEL[c]}
+          </button>
+        ))}
+      </div>
+    </Group>
+  )
+}
+
+function TemplatePicker() {
+  const load = useDesign(s => s.load)
+  return (
+    <Group title="Start from a template">
+      <div className="opts c2">
+        {TEMPLATES.map(t => (
+          <button key={t.id} className="opt tpl" onClick={() => load(t.build())}>
+            {t.name}<small>{t.blurb}</small>
           </button>
         ))}
       </div>
@@ -202,12 +217,17 @@ export function Controls() {
 
   const tennis = spec.category === 'bracelet' && spec.bracelet.kind === 'tennis'
   const necklacePendant = spec.category === 'necklace' && spec.necklace.hasPendant
-  const showStone = hasCenterStone(spec.category) || tennis || necklacePendant
+  // Categories where a stone is relevant at all
+  const stoneRelevant = hasCenterStone(spec.category) || tennis || necklacePendant
+  // Whether a plain (unstoned) option is meaningful — a plain tennis is just a chain
+  const plainAllowed = hasCenterStone(spec.category)
+  const active = stoneOnPiece(spec)
   const caratLabel = tennis ? 'Total carat' : 'Center stone'
 
   return (
     <>
       <CategorySwitch />
+      <TemplatePicker />
 
       {spec.category === 'ring' && <RingControls />}
       {spec.category === 'pendant' && <PendantControls />}
@@ -226,7 +246,20 @@ export function Controls() {
         </div>
       </Group>
 
-      {showStone && (
+      {stoneRelevant && plainAllowed && (
+        <Group title="Stone">
+          <div className="opts c2">
+            <button className="opt" aria-pressed={active} onClick={() => setStone(active ? spec.center.stoneTypeId : 'dia')}>
+              Set a stone
+            </button>
+            <button className="opt" aria-pressed={!active} onClick={() => setStone(NO_STONE)}>
+              No stone<small>Plain band</small>
+            </button>
+          </div>
+        </Group>
+      )}
+
+      {stoneRelevant && active && (
         <>
           <Group title="Stone shape">
             <div className="opts">

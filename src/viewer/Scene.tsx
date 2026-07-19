@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { useDesign } from '../state/design'
 import { alloyById, shapeById, stoneMm } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
-import { CATEGORY_LABEL, hasCenterStone } from '../spec/types'
+import { CATEGORY_LABEL, stoneOnPiece } from '../spec/types'
 import { Piece, viewTarget } from './Piece'
 
 function Turntable({ on, children }: { on: boolean; children: React.ReactNode }) {
@@ -30,7 +30,7 @@ function hudChips(spec: ReturnType<typeof useDesign.getState>['spec']) {
     chips.push(<span key="s" className="chip"><b>{CATEGORY_LABEL[spec.category]}</b></span>)
   }
 
-  if (hasCenterStone(spec.category) || (spec.category === 'necklace' && spec.necklace.hasPendant))
+  if (stoneOnPiece(spec))
     chips.push(<span key="c" className="chip"><b>{spec.center.carat.toFixed(2)} ct</b> {shape.name} · <b>{mm.length.toFixed(2)} × {mm.width.toFixed(2)}</b> mm</span>)
 
   chips.push(<span key="a" className="chip"><b>{alloy.name}</b> · {alloy.hallmark}</span>)

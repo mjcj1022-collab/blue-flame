@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SPEC, type DesignSpec, type ProductCategory } from '../spec/types'
+import { DEFAULT_SPEC, NO_STONE, type DesignSpec, type ProductCategory } from '../spec/types'
 import { computeMetal, convertWeight, patternToMetal, PATTERN_DENSITY } from '../lib/metal'
+import { computeVolume } from '../lib/volume'
 import { computePrice } from '../lib/pricing'
 import { alloyById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
@@ -142,5 +143,23 @@ describe('non-ring weight relationships hold', () => {
     expect(tennis.stoneCount).toBe(40)
     expect(chain.stoneCount).toBe(0)
     expect(tennis.stoneCost).toBeGreaterThan(chain.stoneCost)
+  })
+})
+
+describe('a plain band carries no stone or head', () => {
+  const stoned = cat('ring', { center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1 } })
+  const plain = cat('ring', { center: { shapeId: 'rd', stoneTypeId: NO_STONE, carat: 1 } })
+  it('plain band has zero head volume', () => {
+    expect(computeVolume(plain).head).toBe(0)
+    expect(computeVolume(stoned).head).toBeGreaterThan(0)
+  })
+  it('plain band prices no stone and no setting', () => {
+    const p = computePrice(plain)
+    expect(p.stoneCount).toBe(0)
+    expect(p.stoneCost).toBe(0)
+    expect(p.settingFee).toBe(0)
+  })
+  it('plain band still has a real metal weight', () => {
+    expect(computeMetal(plain).cast).toBeGreaterThan(0)
   })
 })

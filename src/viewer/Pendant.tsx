@@ -1,4 +1,5 @@
 import type { DesignSpec } from '../spec/types'
+import { stoneOnPiece } from '../spec/types'
 import { alloyById } from '../catalog'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
@@ -18,10 +19,12 @@ export function Pendant({ spec }: { spec: DesignSpec }) {
 
   return (
     <group position={[0, 2, 0]}>
-      <group rotation={[Math.PI / 2, 0, 0]}>
-        <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-          carat={spec.center.carat} settingId={spec.setting.typeId} />
-      </group>
+      {stoneOnPiece(spec) && (
+        <group rotation={[Math.PI / 2, 0, 0]}>
+          <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
+            carat={spec.center.carat} settingId={spec.setting.typeId} />
+        </group>
+      )}
 
       {/* Bail */}
       <mesh material={metal} position={[0, bailY, 0]}>

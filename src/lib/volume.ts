@@ -1,4 +1,5 @@
 import type { DesignSpec } from '../spec/types'
+import { stoneOnPiece } from '../spec/types'
 import { shapeById, stoneMm, settingById, type SettingType } from '../catalog'
 import { sizeToDiameter } from './sizing'
 
@@ -62,7 +63,7 @@ function ringVolume(spec: DesignSpec): VolumeBreakdown {
   if (fit === 'comfort') section *= COMFORT_HOLLOW
   const shank = section * 2 * Math.PI * centreR
 
-  const head = headVolume(setting, stoneW)
+  const head = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
   const total = Math.max(shank + head, 40)
   return { shank, head, total }
 }
@@ -72,7 +73,7 @@ function pendantVolume(spec: DesignSpec): VolumeBreakdown {
   const stoneW = centerStoneWidth(spec)
   const { bailInner, bailGauge, hasChain, chainLength, chainGauge } = spec.pendant
 
-  const head = headVolume(setting, stoneW)
+  const head = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
   // Bail: a loop of wire of mean circumference pi * (inner + gauge).
   const bail = wireVolume(Math.PI * (bailInner + bailGauge), bailGauge)
   // Chain: linked wire fills ~45% of the swept length at the given gauge.
@@ -87,14 +88,15 @@ function earringVolume(spec: DesignSpec): VolumeBreakdown {
   const setting = settingById(spec.setting.typeId)
   const stoneW = centerStoneWidth(spec)
   const { pair, postGauge, postLength, dropLength } = spec.earring
+  const headEach = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
 
   const one =
-    headVolume(setting, stoneW) +
+    headEach +
     wireVolume(postLength, postGauge) +
     (dropLength > 0 ? wireVolume(dropLength, Math.max(postGauge, 1.0)) : 0)
 
   const each = pair ? 2 : 1
-  const head = headVolume(setting, stoneW) * each
+  const head = headEach * each
   const total = Math.max(one * each, 3)
   return { shank: total - head, head, total }
 }

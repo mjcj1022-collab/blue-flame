@@ -95,12 +95,28 @@ export const DEFAULT_SPEC: DesignSpec = {
   necklace: DEFAULT_NECKLACE
 }
 
+/** Sentinel stone id for a plain, unstoned piece (a wedding band, a chain). */
+export const NO_STONE = 'none'
+
 /** Does this category carry a single center stone in a head? */
 export const hasCenterStone = (c: ProductCategory): boolean =>
   c === 'ring' || c === 'pendant' || c === 'earring'
 
 /** Does this category use the prong/bezel setting head? */
 export const usesSetting = (c: ProductCategory): boolean => hasCenterStone(c)
+
+/**
+ * Does this specific design actually carry a set stone? Accounts both for the
+ * category (a plain chain never does) and for an explicit "no stone" choice
+ * (a wedding band in a stone-bearing category).
+ */
+export function stoneOnPiece(spec: DesignSpec): boolean {
+  if (spec.center.stoneTypeId === NO_STONE) return false
+  if (hasCenterStone(spec.category)) return true
+  if (spec.category === 'bracelet') return spec.bracelet.kind === 'tennis'
+  if (spec.category === 'necklace') return spec.necklace.hasPendant
+  return false
+}
 
 export const CATEGORY_LABEL: Record<ProductCategory, string> = {
   ring: 'Ring',

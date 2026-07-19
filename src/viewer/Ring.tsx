@@ -1,4 +1,5 @@
 import type { DesignSpec } from '../spec/types'
+import { stoneOnPiece } from '../spec/types'
 import { alloyById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
 import { stoneDims } from './Stone'
@@ -23,10 +24,12 @@ export function Ring({ spec }: { spec: DesignSpec }) {
         <torusGeometry args={[centreR, tube, 24, 180]} />
       </mesh>
 
-      <group position={[0, stoneY, 0]}>
-        <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-          carat={spec.center.carat} settingId={spec.setting.typeId} />
-      </group>
+      {stoneOnPiece(spec) && (
+        <group position={[0, stoneY, 0]}>
+          <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
+            carat={spec.center.carat} settingId={spec.setting.typeId} />
+        </group>
+      )}
     </group>
   )
 }

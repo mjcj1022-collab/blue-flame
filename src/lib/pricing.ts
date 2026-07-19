@@ -1,5 +1,5 @@
 import type { DesignSpec } from '../spec/types'
-import { hasCenterStone, usesSetting } from '../spec/types'
+import { usesSetting, stoneOnPiece, NO_STONE } from '../spec/types'
 import { settingById, shapeById, stoneById, stoneMm } from '../catalog'
 import { computeMetal, type MetalResult } from './metal'
 
@@ -22,6 +22,7 @@ export interface PriceResult {
  * is two stones; a tennis bracelet is `linkCount` stones; a plain band is none.
  */
 export function stoneUnits(spec: DesignSpec): { count: number; caratEach: number } {
+  if (spec.center.stoneTypeId === NO_STONE) return { count: 0, caratEach: 0 }
   const ct = spec.center.carat
   switch (spec.category) {
     case 'ring':     return { count: 1, caratEach: ct }
@@ -71,8 +72,7 @@ export function guardrails(spec: DesignSpec): Guardrail[] {
   const { width } = stoneMm(shape, spec.center.carat)
   const daily = spec.category === 'ring' || spec.category === 'bracelet'
 
-  if (hasCenterStone(spec.category) || (spec.category === 'necklace' && spec.necklace.hasPendant) ||
-      (spec.category === 'bracelet' && spec.bracelet.kind === 'tennis')) {
+  if (stoneOnPiece(spec)) {
     if (stone.mohs < 7 && daily) {
       out.push({
         level: 'warn',

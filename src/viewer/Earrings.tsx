@@ -1,4 +1,5 @@
 import type { DesignSpec } from '../spec/types'
+import { stoneOnPiece } from '../spec/types'
 import { alloyById } from '../catalog'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
@@ -19,10 +20,12 @@ function One({ spec, x }: { spec: DesignSpec; x: number }) {
           <cylinderGeometry args={[postGauge * 0.6, postGauge * 0.6, dropY, 8]} />
         </mesh>
       )}
-      <group position={[0, -dropY / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-          carat={spec.center.carat} settingId={spec.setting.typeId} />
-      </group>
+      {stoneOnPiece(spec) && (
+        <group position={[0, -dropY / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
+            carat={spec.center.carat} settingId={spec.setting.typeId} />
+        </group>
+      )}
       {/* Post, behind the stone */}
       <mesh material={metal} position={[0, -dropY / 2, -postLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[postGauge / 2, postGauge / 2, postLength, 8]} />
