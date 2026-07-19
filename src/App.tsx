@@ -12,6 +12,7 @@ import { LibraryPanel } from './ui/LibraryPanel'
 import { ModelerPanel } from './ui/ModelerPanel'
 import { MetalGenerator } from './ui/MetalGenerator'
 import { useDesign } from './state/design'
+import { useAuth } from './state/auth'
 import { computeMetal } from './lib/metal'
 import { computePrice } from './lib/pricing'
 import { money } from './lib/units'
@@ -24,6 +25,8 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
   const spec = useDesign(s => s.spec)
   const reset = useDesign(s => s.reset)
   const shop = useDesign(s => s.shop)
+  const authUser = useAuth(s => s.user)
+  const logout = useAuth(s => s.logout)
   const [shared, setShared] = useState(false)
   const m = computeMetal(spec)
   const p = computePrice(spec)
@@ -51,6 +54,7 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
         )}
         <button className="mast-lab" onClick={onLab}>Metal Lab</button>
         {mode === 'design' && <button className="mast-reset" onClick={reset}>Reset</button>}
+        <span className="mast-user">{authUser}<button className="mast-signout" onClick={logout}>sign out</button></span>
       </div>
     </header>
   )
