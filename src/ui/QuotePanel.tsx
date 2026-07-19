@@ -7,6 +7,7 @@ import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById, isGr
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
 import { CATEGORY_LABEL, type DesignSpec } from '../spec/types'
+import { Checkout, checkoutConfigured } from './Checkout'
 
 function geometryLines(spec: DesignSpec): string[] {
   const alloy = alloyById(spec.metal.alloyId)
@@ -132,6 +133,7 @@ export function QuotePanel() {
   const shop = useDesign(s => s.shop)
   const setShop = useDesign(s => s.setShop)
   const [costOpen, setCostOpen] = useState(false)
+  const [payOpen, setPayOpen] = useState(false)
   const p = computePrice(spec)
   const alloy = alloyById(spec.metal.alloyId)
   const hasStones = p.stoneCount > 0
@@ -177,6 +179,19 @@ export function QuotePanel() {
         <button className="ghost" onClick={downloadAppraisal}>Appraisal</button>
         <button className="ghost" onClick={copySpec}>Copy spec</button>
       </div>
+
+      {checkoutConfigured() && (
+        <button className="co-open" onClick={() => setPayOpen(true)}>
+          Take payment · {money(p.total)}
+        </button>
+      )}
+      {payOpen && (
+        <Checkout
+          amountCents={Math.round(p.total * 100)}
+          label={`${CATEGORY_LABEL[spec.category]} — ${shop.name}`}
+          onClose={() => setPayOpen(false)}
+        />
+      )}
 
       <h4 style={{ marginTop: 18 }}>Shop</h4>
       <input className="lib-name" style={{ width: '100%' }} value={shop.name}

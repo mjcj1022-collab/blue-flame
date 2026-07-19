@@ -39,12 +39,26 @@ cloud-syncs. Leaving `VITE_API_URL` unset keeps the app standalone.
 
 ## 4. (Optional) Payments with Stripe
 
+The checkout screen **is built**. A **Take payment** button appears in the Quote
+panel — but only once *both* keys below are set. Until then the app is quote-only
+and the button stays hidden (the client never sees a secret key).
+
+**Server (secret key):**
 1. Create a **Stripe** account → Developers → API keys → copy the **test**
-   secret key.
+   secret key (`sk_test_…`).
 2. In Render → blue-flame-api → **Environment**, add `STRIPE_SECRET_KEY`.
 3. In `server/`, add the dep once: `npm i stripe` and commit.
-4. `/api/checkout` now returns a real client secret. Wire Stripe Elements on the
-   client checkout screen (not built yet — client stays quote-only until then).
+   `/api/checkout` now mints a real PaymentIntent client secret.
+
+**Client (publishable key):**
+4. From the same Stripe keys page copy the **publishable** key (`pk_test_…`).
+5. GitHub → repo → **Settings → Secrets and variables → Actions → Variables →
+   New repository variable**: name `VITE_STRIPE_PK`, value `pk_test_…`.
+6. Re-run the deploy (Actions → Run workflow, or push any commit). The build now
+   loads Stripe.js and renders the card form.
+
+Test card: `4242 4242 4242 4242`, any future expiry, any CVC. Switch both keys
+to `sk_live_…` / `pk_live_…` when you're ready to take real money.
 
 ## Test users
 

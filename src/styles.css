@@ -233,6 +233,21 @@ table.cmp.variants td,table.cmp.variants th{white-space:nowrap}
 .lab-apply .primary:disabled{opacity:.4;cursor:not-allowed}
 @media (max-width:720px){.lab-body{grid-template-columns:1fr}.lab-mix{border-right:none;border-bottom:1px solid var(--rule-dark)}}
 
+/* checkout */
+.co-open{width:100%;margin-top:10px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:10px;background:var(--karat);color:#141414;border:1px solid var(--karat);cursor:pointer}
+.co-open:hover{background:var(--karat-lt)}
+.checkout .co-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.co-amount{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid var(--rule-dark)}
+.co-amount span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7A8386}
+.co-amount b{font-size:22px;color:#fff;letter-spacing:-.02em}
+.co-form{display:flex;flex-direction:column;gap:14px}
+.co-pay{width:100%;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:12px;background:var(--karat);color:#141414;border:1px solid var(--karat);cursor:pointer}
+.co-pay:hover:not(:disabled){background:var(--karat-lt)}
+.co-pay:disabled{opacity:.45;cursor:not-allowed}
+.co-err{font-family:var(--mono);font-size:11px;color:#e0736b;margin:0}
+.co-ok{font-size:15px;color:#5fb87a;text-align:center;padding:20px 0;margin:0}
+.co-note{margin-top:2px}
+
 /* production */
 .mfg-sum{margin-left:auto;display:flex;gap:8px;font-family:var(--mono);font-size:9px;letter-spacing:.04em}
 .mfg-sum b{font-weight:700}
