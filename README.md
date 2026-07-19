@@ -6,25 +6,43 @@ A *mandrel* is the tapered steel rod a jeweler slides a ring onto to size it,
 form it, and true it up. It is the ring-sizing instrument, and the thing
 everything else is formed around.
 
-**Phase 1 — solitaire rings, end to end.** Live 3D configurator with real
-sizing math, real casting weights, and a per-alloy metal requirement engine.
+Live 3D configurator across five product categories with real sizing math, real
+casting weights, a per-alloy metal requirement engine, a production layer that
+exports print-ready STL, and an alloy-compounding Metal Lab.
 
 ---
 
 ## What it does
 
-- **Ring sizer** — US 3–13 in quarter sizes, converting through the trade
-  formula `ID = 11.6307 + 0.8128 × size`. Live inside diameter and circumference.
-- **Band-width compensation** — a wide band reads smaller than a narrow one at
-  the same nominal size. Crossing 4.5 mm suggests a quarter size up; 6 mm
-  suggests a half, with a one-click apply.
-- **10 stone shapes, 12 stone types, 12 alloys, 4 settings** — geometry rebuilds
-  parametrically on every change.
-- **Millimetre sizing is shape-dependent.** A 1 ct round reads 6.47 mm; a 1 ct
-  emerald reads 7.00 × 5.00. One formula does not work.
-- **Wearability guardrails** — Mohs hardness warnings, ultrasonic-cleaning
-  cautions, prong-count advice, top-heavy shank detection.
-- **Full metal requirement engine** — see below.
+**Five product categories** — ring, pendant, earrings, bracelet, necklace. Each
+derives its geometry, weight and cost from the spec; nothing is ever stored as a
+mesh. Switch category and the whole model, sizing and quote rebuild.
+
+- **17 templates** — solitaire variants, wedding & men's bands, studs, drops,
+  tennis, bangle, cuff, chain, pendant necklace. One click to start; every
+  template is parametric, not a frozen mesh.
+- **Sizing per category** — rings (US 3–13 quarter sizes, live UK/EU/JP
+  conversion, band-width compensation), bracelets (wrist + fit, tennis/bangle/
+  cuff/chain), necklaces (length + silhouette), earrings (stud/drop, posts,
+  backs).
+- **26 stone types · 16 shapes · 25 metals · 12 settings.** Millimetre sizing is
+  shape-dependent — a 1 ct round reads 6.47 mm; a 1 ct emerald reads 7.00 × 5.00.
+- **Plain bands** — real "no stone" support; a wedding band prices on metal +
+  finish alone.
+- **Finishes & engraving** — 7 surface finishes drive the 3D material; engraving
+  with a character limit computed from the real band circumference.
+- **Wearability & compliance guardrails** — Mohs warnings, prong-count advice,
+  top-heavy shank detection, nickel-content disclosure, non-resizable warnings.
+
+## The Metal Lab
+
+Compound an alloy from ten pure metals (Au, Ag, Cu, Zn, Ni, Pd, Pt, Co, Sn, Ge)
+and watch it resolve live: karat, fineness, **density** (exact, inverse rule of
+mixtures), approximate melt point, resulting **colour** (copper reddens, silver
+pales, whiteners bleach to white gold), and hallmark — with disclosure notes
+(nickel allergen, high-zinc brittleness, sub-10K). Nine standard recipes
+included. "Use in design" makes the alloy the active metal and adds it to the
+per-alloy comparison.
 
 ## The four weights
 
@@ -38,22 +56,38 @@ shops lose money conflating them.
 | **Metal to pour** | Piece + sprue + button + melt loss. Usually 1.7–2.0× cast | Purchasing |
 | **Fine metal content** | Actual grams of Au/Ag/Pt inside the alloy | Spot pricing, refining |
 
-Every design is also costed **across all twelve alloys simultaneously** —
-identical geometry, different densities. Platinum weighs 1.60× what 14K yellow
-does for the same model.
+Every design is also costed **across all alloys simultaneously** — identical
+geometry, different densities. Platinum weighs 1.60× what 14K yellow does for the
+same model. Precious metals price on fine troy ounces; contemporary metals
+(titanium, tungsten, steel, …) price per gram. Grams and pennyweight both
+supported.
 
-Grams and pennyweight both supported. Older jewelers think in dwt and will not
-convert for you.
+## Production layer
+
+- **Bill of materials** — metal, stones, findings, labor; reconciles to the penny
+  with the quote.
+- **Manufacturability checks** — minimum wall by metal, prong stock vs printer
+  resolution, tennis stone spacing, bezel closed-void, wearable weight, with
+  pass / warn / fail levels.
+- **STL export** — metal-only, true-millimetre, print-ready for wax/resin casting.
+- **Tech sheet** — dimensioned, category-aware, with full disclosure block.
+
+## Save, version, share
+
+- **Design library** — save, load, fork, full version history with rollback
+  (localStorage).
+- **Share links** — the entire design encodes into a URL; a `?d=` link opens the
+  exact piece with no login.
 
 ## Two things that are easy to get wrong
 
 1. **A torus under-weighs a band by ~21%.** A torus has an elliptical
-   cross-section; a real band is near-rectangular. The ratio is π/4. The shank
-   is modelled as cross-section area × centreline circumference with a profile
-   factor instead. See `src/lib/volume.ts`.
-2. **Castable resin is ~21% denser than injection wax.** A shop that keeps
-   using the old wax multiplier on 3D-printed patterns under-orders metal on
-   every single job. See `PATTERN_DENSITY` in `src/lib/metal.ts`.
+   cross-section; a real band is near-rectangular. The ratio is π/4. The shank is
+   modelled as cross-section area × centreline circumference. See
+   `src/lib/volume.ts`.
+2. **Castable resin is ~21% denser than injection wax.** A shop that keeps using
+   the old wax multiplier on 3D-printed patterns under-orders metal on every job.
+   See `PATTERN_DENSITY` in `src/lib/metal.ts`.
 
 ---
 
@@ -66,7 +100,7 @@ React 18 · TypeScript · Vite · React Three Fiber · zustand · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 19 golden fixtures against trade reference weights
+npm test         # 68 tests across weights, library, production, alloys, personalization, share
 npm run build
 ```
 
@@ -74,40 +108,42 @@ npm run build
 
 ```
 src/
-├── spec/types.ts        DesignSpec — the single source of truth.
-│                        Geometry, weight and cost are all DERIVED from it.
-│                        Nothing is ever stored as a mesh.
-├── catalog/             alloys, shapes, stones, settings
-│                        Every row carries its own math. Adding a metal is a
-│                        data change, never a code change.
+├── spec/types.ts        DesignSpec — the single source of truth (all categories).
+│                        Geometry, weight and cost are DERIVED from it.
+├── catalog/             alloys, elements, shapes, stones, settings, finishes,
+│                        templates. Every row carries its own math.
 ├── lib/
 │   ├── sizing.ts        size conversions, band-width compensation
-│   ├── volume.ts        parametric volume model
-│   ├── metal.ts         the four weights, per-alloy comparison, pattern conversion
-│   ├── pricing.ts       cost breakdown and wearability guardrails
-│   └── units.ts         grams, pennyweight, troy ounces
-├── viewer/              React Three Fiber scene
-├── ui/                  controls, metal requirement, quote
-└── test/weights.test.ts golden fixtures
+│   ├── volume.ts        per-category parametric volume model
+│   ├── metal.ts         the four weights, per-alloy comparison
+│   ├── pricing.ts       cost breakdown + wearability/compliance guardrails
+│   ├── alloygen.ts      Metal Lab compounding engine
+│   ├── bom.ts           bill of materials
+│   ├── manufacture.ts   manufacturability checks
+│   ├── engrave.ts       engraving capacity + fee
+│   ├── library.ts       save / fork / version / rollback
+│   └── share.ts         URL encode/decode of a design
+├── viewer/              React Three Fiber scene + per-category geometry + STL export
+├── ui/                  controls, metal panel, quote, production, library, Metal Lab
+└── test/                golden fixtures + engine tests
 ```
 
 ## Before this touches a client
 
-Three numbers are illustrative and must be replaced:
+Illustrative numbers to replace: `Alloy.spot` / `Alloy.perGram` (live feed),
+`StoneType.rate` (supplier pricing), `MARGIN` in `src/lib/pricing.ts`. Densities,
+mm factors and DFM thresholds should be verified by a working jeweler.
 
-- `Alloy.spot` — wire to a live metal price feed
-- `StoneType.rate` — replace with your supplier pricing
-- `MARGIN` in `src/lib/pricing.ts` — currently 1.35, arbitrary
+## Not yet built
 
-Densities, mm factors and DFM thresholds should be verified by a working
-jeweler. Mills differ by around 3%, and a 3% density error on a 15 g platinum
-piece is real money.
+The client-only app covers the spec's Phases 1–3 and much of 5. Still open, and
+requiring backend infrastructure or heavy graphics work:
 
-## Roadmap
-
-See [`docs/build-plan.md`](docs/build-plan.md). Phase 2 adds templates and the
-non-ring categories with their sizers; Phase 3 is the production layer; Phase 4
-is commerce and multi-tenant.
+- **Commerce & multi-tenant** (Phase 4) — Stripe payments, accounts, hosted
+  approval flow, order pipeline, REST/webhook API, white-label. Needs a server,
+  a database, and third-party accounts.
+- **Advanced visualization** — real faceted stone dispersion, hand/ear/wrist
+  try-on models, AR via WebXR, lighting scenarios, 4-up compare.
 
 ## Docs
 
