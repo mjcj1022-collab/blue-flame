@@ -32,6 +32,7 @@ interface DesignStore {
   setFinish: (id: FinishId) => void
   setEngraving: (patch: Partial<DesignSpec['engraving']>) => void
   setFit: (fit: FitProfile) => void
+  toggleHidden: (key: string) => void
   load: (spec: DesignSpec) => void
   toggleUnit: () => void
   toggleCompare: () => void
@@ -66,6 +67,11 @@ export const useDesign = create<DesignStore>(set => ({
   setEngraving: patch => set(s => ({ spec: { ...s.spec, engraving: { ...s.spec.engraving, ...patch } } })),
   setFit: fit => set(s => ({ spec: { ...s.spec, ring: { ...s.spec.ring, fit } } })),
   // Backfill any fields absent from an older saved design.
+  toggleHidden: key => set(s => {
+    const cur = s.spec.hidden ?? []
+    const hidden = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]
+    return { spec: { ...s.spec, hidden } }
+  }),
   load: spec => set({ spec: {
     ...DEFAULT_SPEC, ...spec,
     ring: { ...DEFAULT_SPEC.ring, ...spec.ring },

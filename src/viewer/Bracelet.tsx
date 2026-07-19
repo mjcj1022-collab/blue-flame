@@ -1,5 +1,6 @@
 import type { DesignSpec } from '../spec/types'
 import { alloyById, shapeById, stoneMm } from '../catalog'
+import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { useMetalMaterial } from './material'
@@ -25,22 +26,27 @@ export function Bracelet({ spec }: { spec: DesignSpec }) {
   if (kind === 'tennis') {
     return (
       <group>
-        <mesh material={metal} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[R, Math.max(sW * 0.35, 0.8), 16, 160]} />
-        </mesh>
+        {!isHidden(spec, 'band') && (
+          <mesh material={metal} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[R, Math.max(sW * 0.35, 0.8), 16, 160]} />
+          </mesh>
+        )}
         {Array.from({ length: shownStones }).map((_, i) => {
           const a = (i / shownStones) * TWO_PI
           return (
             <group key={i} position={[Math.cos(a) * R, tube + d.pavH * 0.5, Math.sin(a) * R]}
               scale={0.9}>
               <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-                carat={Math.max(perStone, 0.02)} settingId={spec.setting.typeId} />
+                carat={Math.max(perStone, 0.02)} settingId={spec.setting.typeId}
+                showStone={!isHidden(spec, 'stone')} showSetting={!isHidden(spec, 'head')} />
             </group>
           )
         })}
       </group>
     )
   }
+
+  if (isHidden(spec, 'band')) return <group />
 
   if (kind === 'chain') {
     return (

@@ -4,6 +4,7 @@ import { stoneOnPiece } from '../spec/types'
 import { alloyById, settingById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
 import { shankGeometry } from '../lib/sculpt'
+import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { HaloRing } from './HaloRing'
@@ -35,17 +36,18 @@ export function Ring({ spec }: { spec: DesignSpec }) {
 
   return (
     <group>
-      {bandGeo
+      {!isHidden(spec, 'band') && (bandGeo
         ? <mesh material={metal} geometry={bandGeo} />
-        : <mesh material={metal} scale={[1, 1, width / thickness]}><torusGeometry args={[centreR, tube, 24, 180]} /></mesh>}
+        : <mesh material={metal} scale={[1, 1, width / thickness]}><torusGeometry args={[centreR, tube, 24, 180]} /></mesh>)}
 
-      {spec.engraving.text.trim() && <EngravingText spec={spec} />}
+      {!isHidden(spec, 'engraving') && spec.engraving.text.trim() && <EngravingText spec={spec} />}
 
       {stoneOnPiece(spec) && (
         <group position={[0, stoneY, 0]}>
           <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
-          {halo && (
+            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading}
+            showStone={!isHidden(spec, 'stone')} showSetting={!isHidden(spec, 'head')} />
+          {halo && !isHidden(spec, 'halo') && (
             <HaloRing
               material={headMetal}
               centerStoneWidth={d.width}

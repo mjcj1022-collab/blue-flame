@@ -1,5 +1,6 @@
 import type { DesignSpec } from '../spec/types'
 import { alloyById } from '../catalog'
+import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { useMetalMaterial } from './material'
@@ -20,15 +21,18 @@ export function Necklace({ spec }: { spec: DesignSpec }) {
   return (
     <group>
       {/* Chain loop, hanging in the view plane */}
-      <mesh material={metal} scale={[1, 1.15, 1]}>
-        <torusGeometry args={[R, Math.max(gauge * 0.5, 0.5), 14, 200]} />
-      </mesh>
+      {!isHidden(spec, 'chain') && (
+        <mesh material={metal} scale={[1, 1.15, 1]}>
+          <torusGeometry args={[R, Math.max(gauge * 0.5, 0.5), 14, 200]} />
+        </mesh>
+      )}
 
       {hasPendant && (
         <group position={[0, -R * 1.15 - d.r * d.lwRatio, 0]}>
           <group rotation={[Math.PI / 2, 0, 0]}>
             <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-              carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
+              carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading}
+              showStone={!isHidden(spec, 'stone')} showSetting={!isHidden(spec, 'head')} />
           </group>
         </group>
       )}

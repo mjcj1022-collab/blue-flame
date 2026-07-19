@@ -5,6 +5,7 @@ import { Controls } from './ui/Controls'
 import { MetalPanel } from './ui/MetalPanel'
 import { QuotePanel } from './ui/QuotePanel'
 import { ProductionPanel } from './ui/ProductionPanel'
+import { AttributesPanel } from './ui/AttributesPanel'
 import { LibraryPanel } from './ui/LibraryPanel'
 import { ModelerPanel } from './ui/ModelerPanel'
 import { MetalGenerator } from './ui/MetalGenerator'
@@ -74,6 +75,7 @@ export default function App() {
             <aside className="panel">
               <div className="panel-scroll">
                 <Controls />
+                <AttributesPanel />
                 <MetalPanel />
                 <ProductionPanel />
                 <LibraryPanel />

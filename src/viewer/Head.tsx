@@ -8,13 +8,15 @@ import { Stone, stoneDims } from './Stone'
  * stone. Consumers position the whole group. Shared by rings, pendants,
  * earrings and tennis links so the setting is modelled once.
  */
-export function Head({ material, shapeId, stoneTypeId, carat, settingId, grading }: {
+export function Head({ material, shapeId, stoneTypeId, carat, settingId, grading, showStone = true, showSetting = true }: {
   material: THREE.Material
   shapeId: string
   stoneTypeId: string
   carat: number
   settingId: string
   grading?: Grading
+  showStone?: boolean
+  showSetting?: boolean
 }) {
   const setting = settingById(settingId)
   const d = stoneDims(shapeId, carat)
@@ -37,8 +39,10 @@ export function Head({ material, shapeId, stoneTypeId, carat, settingId, grading
 
   return (
     <group>
-      <Stone shapeId={shapeId} stoneTypeId={stoneTypeId} carat={carat} grading={grading} />
+      {showStone && <Stone shapeId={shapeId} stoneTypeId={stoneTypeId} carat={carat} grading={grading} />}
 
+      {showSetting && (
+      <>
       {/* Gallery rail */}
       <mesh material={material} rotation={[Math.PI / 2, 0, 0]} position={[0, -d.pavH * 0.55, 0]} scale={[1, 1, d.lwRatio]}>
         <torusGeometry args={[d.r * 0.8, prongR * 0.85, 10, 44]} />
@@ -59,6 +63,8 @@ export function Head({ material, shapeId, stoneTypeId, carat, settingId, grading
             </mesh>
           </group>
         ))
+      )}
+      </>
       )}
     </group>
   )

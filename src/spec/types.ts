@@ -84,6 +84,7 @@ export interface NecklaceGeo {
 export interface DesignSpec {
   version: 1
   category: ProductCategory
+  hidden?: string[]     // feature keys removed via the attribute pane
   metal: { alloyId: string; rhodium?: boolean; twoTone?: boolean; headAlloyId?: string; form?: string }
   center: Center
   setting: { typeId: string; melee?: MeleeSpec }

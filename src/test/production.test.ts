@@ -34,6 +34,25 @@ describe('bill of materials', () => {
   })
 })
 
+describe('attribute removal', () => {
+  it('removing the band drops shank weight', () => {
+    const full = computeMetal(cat('ring')).cast
+    const noBand = computeMetal(cat('ring', { hidden: ['band'] })).cast
+    expect(noBand).toBeLessThan(full)
+  })
+  it('removing the stone zeroes its cost; removing the setting zeroes its fee', () => {
+    const noStone = computePrice(cat('ring', { hidden: ['stone'] }))
+    const noHead = computePrice(cat('ring', { hidden: ['head'] }))
+    expect(noStone.stoneCost).toBe(0)
+    expect(noHead.settingFee).toBe(0)
+  })
+  it('removing the setting also drops the head volume', () => {
+    const full = computeMetal(cat('ring')).volume
+    const noHead = computeMetal(cat('ring', { hidden: ['head'] })).volume
+    expect(noHead).toBeLessThan(full)
+  })
+})
+
 describe('settings, accents and metals depth', () => {
   it('a halo adds 16 accent stones and costs more than a plain solitaire', () => {
     const solit = computePrice(cat('ring', { setting: { typeId: 'p4' } }))

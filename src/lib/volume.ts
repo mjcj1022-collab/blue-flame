@@ -2,6 +2,9 @@ import type { DesignSpec, BandProfile } from '../spec/types'
 import { stoneOnPiece } from '../spec/types'
 import { shapeById, stoneMm, settingById, type SettingType } from '../catalog'
 import { sizeToDiameter } from './sizing'
+import { isHidden } from './features'
+
+const headOn = (spec: DesignSpec) => stoneOnPiece(spec) && !isHidden(spec, 'head')
 
 /** Cross-section fill by band profile. `round` is the calibrated baseline. */
 const PROFILE_FACTOR: Record<BandProfile, number> = { round: 0.90, flat: 1.02, dshape: 0.96, knife: 0.70 }
@@ -64,10 +67,10 @@ function ringVolume(spec: DesignSpec): VolumeBreakdown {
 
   let section = width * thickness * (PROFILE_FACTOR[profile] ?? PROFILE_FLAT)
   if (fit === 'comfort') section *= COMFORT_HOLLOW
-  const shank = section * 2 * Math.PI * centreR
+  const shank = isHidden(spec, 'band') ? 0 : section * 2 * Math.PI * centreR
 
-  const head = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
-  const total = Math.max(shank + head, 40)
+  const head = headOn(spec) ? headVolume(setting, stoneW) : 0
+  const total = Math.max(shank + head, 5)
   return { shank, head, total }
 }
 
@@ -76,11 +79,11 @@ function pendantVolume(spec: DesignSpec): VolumeBreakdown {
   const stoneW = centerStoneWidth(spec)
   const { bailInner, bailGauge, hasChain, chainLength, chainGauge } = spec.pendant
 
-  const head = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
+  const head = headOn(spec) ? headVolume(setting, stoneW) : 0
   // Bail: a loop of wire of mean circumference pi * (inner + gauge).
-  const bail = wireVolume(Math.PI * (bailInner + bailGauge), bailGauge)
+  const bail = isHidden(spec, 'bail') ? 0 : wireVolume(Math.PI * (bailInner + bailGauge), bailGauge)
   // Chain: linked wire fills ~45% of the swept length at the given gauge.
-  const chain = hasChain ? wireVolume(chainLength * MM_PER_INCH, chainGauge) * 2.2 * 0.45 : 0
+  const chain = hasChain && !isHidden(spec, 'chain') ? wireVolume(chainLength * MM_PER_INCH, chainGauge) * 2.2 * 0.45 : 0
 
   const shank = bail + chain
   const total = Math.max(shank + head, 8)
@@ -91,7 +94,7 @@ function earringVolume(spec: DesignSpec): VolumeBreakdown {
   const setting = settingById(spec.setting.typeId)
   const stoneW = centerStoneWidth(spec)
   const { pair, postGauge, postLength, dropLength } = spec.earring
-  const headEach = stoneOnPiece(spec) ? headVolume(setting, stoneW) : 0
+  const headEach = headOn(spec) ? headVolume(setting, stoneW) : 0
 
   const one =
     headEach +
@@ -114,8 +117,8 @@ function braceletVolume(spec: DesignSpec): VolumeBreakdown {
     // stones. Size each head from the per-stone carat, not the total.
     const perStone = spec.center.carat / Math.max(linkCount, 1)
     const stoneW = stoneMm(shapeById(spec.center.shapeId), perStone).width
-    const heads = headVolume(setting, stoneW) * linkCount
-    const links = wireVolume(length, Math.max(width * 0.35, 1.2)) * 1.4  // link stock between stones
+    const heads = isHidden(spec, 'head') ? 0 : headVolume(setting, stoneW) * linkCount
+    const links = isHidden(spec, 'band') ? 0 : wireVolume(length, Math.max(width * 0.35, 1.2)) * 1.4  // link stock between stones
     return { shank: links, head: heads, total: Math.max(links + heads, 20) }
   }
   if (kind === 'chain') {
@@ -131,8 +134,8 @@ function braceletVolume(spec: DesignSpec): VolumeBreakdown {
 
 function necklaceVolume(spec: DesignSpec): VolumeBreakdown {
   const { length, gauge } = spec.necklace
-  const links = wireVolume(length * MM_PER_INCH, gauge) * 2.2 * 0.45
-  const head = spec.necklace.hasPendant
+  const links = isHidden(spec, 'chain') ? 0 : wireVolume(length * MM_PER_INCH, gauge) * 2.2 * 0.45
+  const head = spec.necklace.hasPendant && !isHidden(spec, 'head')
     ? headVolume(settingById(spec.setting.typeId), centerStoneWidth(spec))
     : 0
   return { shank: links, head, total: Math.max(links + head, 12) }

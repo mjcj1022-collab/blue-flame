@@ -1,6 +1,7 @@
 import type { DesignSpec } from '../spec/types'
 import { stoneOnPiece } from '../spec/types'
 import { alloyById } from '../catalog'
+import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { useMetalMaterial } from './material'
@@ -25,13 +26,16 @@ function One({ spec, x }: { spec: DesignSpec; x: number }) {
       {stoneOnPiece(spec) && (
         <group position={[0, -dropY / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
+            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading}
+            showStone={!isHidden(spec, 'stone')} showSetting={!isHidden(spec, 'head')} />
         </group>
       )}
       {/* Post, behind the stone */}
-      <mesh material={metal} position={[0, -dropY / 2, -postLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[postGauge / 2, postGauge / 2, postLength, 8]} />
-      </mesh>
+      {!isHidden(spec, 'posts') && (
+        <mesh material={metal} position={[0, -dropY / 2, -postLength / 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[postGauge / 2, postGauge / 2, postLength, 8]} />
+        </mesh>
+      )}
     </group>
   )
 }

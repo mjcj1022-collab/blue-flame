@@ -1,6 +1,7 @@
 import type { DesignSpec } from '../spec/types'
 import { stoneOnPiece } from '../spec/types'
 import { alloyById } from '../catalog'
+import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { useMetalMaterial } from './material'
@@ -24,16 +25,19 @@ export function Pendant({ spec }: { spec: DesignSpec }) {
       {stoneOnPiece(spec) && (
         <group rotation={[Math.PI / 2, 0, 0]}>
           <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
+            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading}
+            showStone={!isHidden(spec, 'stone')} showSetting={!isHidden(spec, 'head')} />
         </group>
       )}
 
       {/* Bail */}
-      <mesh material={metal} position={[0, bailY, 0]}>
-        <torusGeometry args={[bailInner / 2 + bailGauge / 2, bailGauge / 2, 12, 32]} />
-      </mesh>
+      {!isHidden(spec, 'bail') && (
+        <mesh material={metal} position={[0, bailY, 0]}>
+          <torusGeometry args={[bailInner / 2 + bailGauge / 2, bailGauge / 2, 12, 32]} />
+        </mesh>
+      )}
 
-      {hasChain && [-1, 1].map(s => (
+      {hasChain && !isHidden(spec, 'chain') && [-1, 1].map(s => (
         <mesh key={s} material={metal} position={[s * topY * 0.5, topY + halfH * 0.6, 0]} rotation={[0, 0, s * 0.5]}>
           <cylinderGeometry args={[bailGauge * 0.35, bailGauge * 0.35, halfH * 1.8, 8]} />
         </mesh>
