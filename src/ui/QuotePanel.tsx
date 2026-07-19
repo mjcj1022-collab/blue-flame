@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDesign } from '../state/design'
 import { computePrice, stoneUnits } from '../lib/pricing'
+import { appraisal } from '../lib/appraisal'
 import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById, isGradeable, gradeLabel } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
@@ -145,6 +146,15 @@ export function QuotePanel() {
     await navigator.clipboard.writeText(JSON.stringify(spec, null, 2))
   }
 
+  const downloadAppraisal = () => {
+    const blob = new Blob([appraisal(spec)], { type: 'text/plain' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `bfg-request-appraisal-${spec.category}-${Date.now()}.txt`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   return (
     <div className="panel-block quote">
       <div className="qline"><span>Net metal — {alloy.name}</span><span>{money(p.metalCost)}</span></div>
@@ -161,6 +171,7 @@ export function QuotePanel() {
       </div>
       <div className="qact">
         <button className="primary" onClick={download}>Tech sheet</button>
+        <button className="ghost" onClick={downloadAppraisal}>Appraisal</button>
         <button className="ghost" onClick={copySpec}>Copy spec</button>
       </div>
 

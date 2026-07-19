@@ -4,6 +4,7 @@ import { computeBom } from '../lib/bom'
 import { manufacturabilityChecks, checkSummary } from '../lib/manufacture'
 import { computePrice } from '../lib/pricing'
 import { computeMetal } from '../lib/metal'
+import { appraisal } from '../lib/appraisal'
 
 const cat = (category: ProductCategory, over: Partial<DesignSpec> = {}): DesignSpec =>
   ({ ...DEFAULT_SPEC, category, ...over })
@@ -31,6 +32,16 @@ describe('bill of materials', () => {
     const backs = bom.lines.find(l => l.item === 'Backs')
     expect(posts?.qty).toBe('2')
     expect(backs?.qty).toBe('2')
+  })
+})
+
+describe('insurance appraisal', () => {
+  it('states a retail replacement value above the shop estimate, with grade + cert', () => {
+    const text = appraisal(cat('ring', { center: { ...DEFAULT_SPEC.center, cert: { lab: 'GIA', number: '1234' } } }), 'TEST', '2026-01-01')
+    expect(text).toContain('INSURANCE APPRAISAL')
+    expect(text).toContain('RETAIL REPLACEMENT')
+    expect(text).toContain('GIA 1234')
+    expect(text).toContain('Excellent cut')
   })
 })
 
