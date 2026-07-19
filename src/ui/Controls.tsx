@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useDesign } from '../state/design'
-import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, type Alloy } from '../catalog'
+import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails } from '../lib/pricing'
 import { engraveCapacity, ENGRAVE_FONTS } from '../lib/engrave'
@@ -298,6 +298,45 @@ function PersonalizationGroup() {
   )
 }
 
+function GradeRow({ label, grades, value, onPick }: { label: string; grades: Grade[]; value: string; onPick: (id: string) => void }) {
+  return (
+    <>
+      <div className="subhead">{label}</div>
+      <div className="opts grade-opts">
+        {grades.map(g => (
+          <button key={g.id} className="opt" aria-pressed={value === g.id} onClick={() => onPick(g.id)}>{g.label}</button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function GradingGroup() {
+  const { spec, setGrading, setCert } = useDesign()
+  const g = spec.center.grading
+  const cert = spec.center.cert
+  const mult = gradeMultiplier(g)
+  return (
+    <Group title="Diamond grading">
+      <GradeRow label="Cut" grades={CUT_GRADES} value={g.cut} onPick={id => setGrading({ cut: id })} />
+      <GradeRow label="Colour" grades={COLOR_GRADES} value={g.color} onPick={id => setGrading({ color: id })} />
+      <GradeRow label="Clarity" grades={CLARITY_GRADES} value={g.clarity} onPick={id => setGrading({ clarity: id })} />
+      <GradeRow label="Fluorescence" grades={FLUOR_GRADES} value={g.fluorescence} onPick={id => setGrading({ fluorescence: id })} />
+      <p className="hint">{gradeLabel(g)} · stone price <b>×{mult.toFixed(2)}</b> vs the G/VS2/Excellent baseline</p>
+      <div className="subhead" style={{ marginTop: 14 }}>Certificate</div>
+      <div className="opts">
+        {CERT_LABS.map(lab => (
+          <button key={lab} className="opt" aria-pressed={cert.lab === lab} onClick={() => setCert({ lab })}>{lab === 'none' ? 'None' : lab}</button>
+        ))}
+      </div>
+      {cert.lab !== 'none' && (
+        <input className="lib-name" style={{ width: '100%', marginTop: 10 }} value={cert.number}
+          onChange={e => setCert({ number: e.target.value })} placeholder={`${cert.lab} report number`} />
+      )}
+    </Group>
+  )
+}
+
 export function Controls() {
   const { spec, setShape, setStone, setCarat, setSetting } = useDesign()
   const shape = shapeById(spec.center.shapeId)
@@ -378,6 +417,8 @@ export function Controls() {
                 : <>Measures <b>{mm.length.toFixed(2)} × {mm.width.toFixed(2)}</b> mm · millimetre size is shape-dependent</>}
             </p>
           </Group>
+
+          {isGradeable(spec.center.stoneTypeId) && <GradingGroup />}
 
           <Group title="Setting">
             <div className="opts c2">

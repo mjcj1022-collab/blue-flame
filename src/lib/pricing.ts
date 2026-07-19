@@ -1,6 +1,6 @@
 import type { DesignSpec } from '../spec/types'
 import { usesSetting, stoneOnPiece, NO_STONE } from '../spec/types'
-import { settingById, shapeById, stoneById, stoneMm, finishById, alloyById } from '../catalog'
+import { settingById, shapeById, stoneById, stoneMm, finishById, alloyById, isGradeable, gradeMultiplier, DEFAULT_GRADING } from '../catalog'
 import { computeMetal, type MetalResult } from './metal'
 import { engraveFee } from './engrave'
 
@@ -50,7 +50,8 @@ export function computePrice(spec: DesignSpec): PriceResult {
   const setting = settingById(spec.setting.typeId)
   const { count, caratEach } = stoneUnits(spec)
 
-  const stoneCost = count > 0 ? count * stone.rate * Math.pow(caratEach, stone.exponent) : 0
+  const gm = isGradeable(spec.center.stoneTypeId) ? gradeMultiplier(spec.center.grading ?? DEFAULT_GRADING) : 1
+  const stoneCost = count > 0 ? count * stone.rate * Math.pow(caratEach, stone.exponent) * gm : 0
   const settingFee = usesSetting(spec.category) && count > 0 ? count * setting.fee : 0
 
   // Accent stones (halo, pavé, channel, three-stone sides): cheaper per-ct

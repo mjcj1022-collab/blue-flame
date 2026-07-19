@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { settingById } from '../catalog'
+import { settingById, type Grading } from '../catalog'
 import { Stone, stoneDims } from './Stone'
 
 /**
@@ -8,12 +8,13 @@ import { Stone, stoneDims } from './Stone'
  * stone. Consumers position the whole group. Shared by rings, pendants,
  * earrings and tennis links so the setting is modelled once.
  */
-export function Head({ material, shapeId, stoneTypeId, carat, settingId }: {
+export function Head({ material, shapeId, stoneTypeId, carat, settingId, grading }: {
   material: THREE.Material
   shapeId: string
   stoneTypeId: string
   carat: number
   settingId: string
+  grading?: Grading
 }) {
   const setting = settingById(settingId)
   const d = stoneDims(shapeId, carat)
@@ -36,7 +37,7 @@ export function Head({ material, shapeId, stoneTypeId, carat, settingId }: {
 
   return (
     <group>
-      <Stone shapeId={shapeId} stoneTypeId={stoneTypeId} carat={carat} />
+      <Stone shapeId={shapeId} stoneTypeId={stoneTypeId} carat={carat} grading={grading} />
 
       {/* Gallery rail */}
       <mesh material={material} rotation={[Math.PI / 2, 0, 0]} position={[0, -d.pavH * 0.55, 0]} scale={[1, 1, d.lwRatio]}>

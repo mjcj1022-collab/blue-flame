@@ -153,8 +153,8 @@ describe('non-ring weight relationships hold', () => {
 })
 
 describe('a plain band carries no stone or head', () => {
-  const stoned = cat('ring', { center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1 } })
-  const plain = cat('ring', { center: { shapeId: 'rd', stoneTypeId: NO_STONE, carat: 1 } })
+  const stoned = cat('ring', { center: { ...DEFAULT_SPEC.center, shapeId: 'rd', stoneTypeId: 'dia', carat: 1 } })
+  const plain = cat('ring', { center: { ...DEFAULT_SPEC.center, shapeId: 'rd', stoneTypeId: NO_STONE, carat: 1 } })
   it('plain band has zero head volume', () => {
     expect(computeVolume(plain).head).toBe(0)
     expect(computeVolume(stoned).head).toBeGreaterThan(0)

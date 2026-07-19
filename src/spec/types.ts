@@ -22,10 +22,15 @@ export interface Engraving {
   font: string
 }
 
+import type { Grading, Cert } from '../catalog/grading'
+import { DEFAULT_GRADING, DEFAULT_CERT } from '../catalog/grading'
+
 export interface Center {
   shapeId: string
   stoneTypeId: string
   carat: number
+  grading: Grading
+  cert: Cert
 }
 
 /** Ring — sized on a mandrel, inside diameter in mm. */
@@ -96,7 +101,7 @@ export const DEFAULT_SPEC: DesignSpec = {
   version: 1,
   category: 'ring',
   metal: { alloyId: '14ky' },
-  center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1.0 },
+  center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1.0, grading: DEFAULT_GRADING, cert: DEFAULT_CERT },
   setting: { typeId: 'p4' },
   finish: 'polish',
   engraving: { text: '', placement: 'inside', font: 'Serif' },

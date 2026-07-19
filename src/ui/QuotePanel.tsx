@@ -1,6 +1,6 @@
 import { useDesign } from '../state/design'
 import { computePrice, stoneUnits } from '../lib/pricing'
-import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById } from '../catalog'
+import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById, isGradeable, gradeLabel } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
 import { CATEGORY_LABEL, type DesignSpec } from '../spec/types'
@@ -62,9 +62,13 @@ function stoneLines(spec: DesignSpec): string[] {
     'STONE',
     `  ${count > 1 ? `${count} x ` : 'Center            '}${caratEach.toFixed(2)} ct ${shape.name}, ${mm.length.toFixed(2)} x ${mm.width.toFixed(2)} mm`,
     `  Material          ${stone.name} - ${stone.variety}, Mohs ${stone.mohs}`,
+    ...(isGradeable(spec.center.stoneTypeId) ? [
+      `  Grade             ${gradeLabel(spec.center.grading)}, ${spec.center.grading.fluorescence} fluor.`,
+      spec.center.cert.lab !== 'none' ? `  Certificate       ${spec.center.cert.lab} ${spec.center.cert.number || '(number pending)'}` : ''
+    ] : []),
     `  Treatment         ${stone.treatment ?? 'None disclosed'}`,
     `  Setting           ${setting.name} (${setting.variety})`
-  ]
+  ].filter(Boolean)
 }
 
 function techSheet(spec: DesignSpec) {

@@ -27,7 +27,7 @@ export function Ring({ spec }: { spec: DesignSpec }) {
       {stoneOnPiece(spec) && (
         <group position={[0, stoneY, 0]}>
           <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-            carat={spec.center.carat} settingId={spec.setting.typeId} />
+            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
         </group>
       )}
     </group>

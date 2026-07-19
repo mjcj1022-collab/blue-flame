@@ -132,6 +132,10 @@ table.cmp td.best{color:var(--patina);font-weight:700}
 .obj-row.sel{border-color:var(--karat);background:rgba(156,122,60,.1)}
 select.lib-name{appearance:none;-webkit-appearance:none}
 
+/* grading */
+.grade-opts{display:flex;flex-wrap:wrap;gap:4px}
+.grade-opts .opt{flex:0 0 auto;min-width:0;padding:7px 10px;font-size:11px}
+
 /* filters & subheads */
 .filter-row{display:flex;align-items:center;gap:8px;font-family:var(--ui);font-size:11px;color:#B7BEC1;margin-bottom:12px;cursor:pointer;user-select:none}
 .filter-row input{accent-color:var(--karat);width:14px;height:14px}

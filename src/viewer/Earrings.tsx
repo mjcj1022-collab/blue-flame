@@ -23,7 +23,7 @@ function One({ spec, x }: { spec: DesignSpec; x: number }) {
       {stoneOnPiece(spec) && (
         <group position={[0, -dropY / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <Head material={metal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}
-            carat={spec.center.carat} settingId={spec.setting.typeId} />
+            carat={spec.center.carat} settingId={spec.setting.typeId} grading={spec.center.grading} />
         </group>
       )}
       {/* Post, behind the stone */}
