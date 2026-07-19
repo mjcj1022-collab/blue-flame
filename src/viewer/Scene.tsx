@@ -38,11 +38,23 @@ function hudChips(spec: ReturnType<typeof useDesign.getState>['spec']) {
   return chips
 }
 
+interface Lighting { label: string; bg: string; envI: number; amb: number; key: [string, number]; fill: [string, number] }
+const LIGHTING: Record<string, Lighting> = {
+  studio:   { label: 'Studio',   bg: '#0E1113', envI: 0.90, amb: 0.30, key: ['#ffffff', 1.6], fill: ['#BFD4FF', 0.70] },
+  daylight: { label: 'Daylight', bg: '#151a1d', envI: 1.10, amb: 0.50, key: ['#FFF7E8', 2.1], fill: ['#CFE0FF', 0.95] },
+  case:     { label: 'Case',     bg: '#050607', envI: 0.70, amb: 0.12, key: ['#FFFFFF', 2.7], fill: ['#FFFFFF', 0.22] },
+  candle:   { label: 'Candle',   bg: '#140f0a', envI: 0.60, amb: 0.18, key: ['#FF9C45', 1.6], fill: ['#FFB86A', 0.40] },
+  office:   { label: 'Office',   bg: '#10151a', envI: 0.90, amb: 0.55, key: ['#EAF0FF', 1.2], fill: ['#EAF0FF', 0.85] }
+}
+const SCENES = ['studio', 'daylight', 'case', 'candle', 'office']
+
 export function Scene() {
   const spec = useDesign(s => s.spec)
   const [spin, setSpin] = useState(true)
   const [top, setTop] = useState(false)
+  const [scene, setScene] = useState('studio')
   const [reduced, setReduced] = useState(false)
+  const L = LIGHTING[scene]
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -59,13 +71,13 @@ export function Scene() {
         camera={{ fov: 30, position: [18, 16, 44] }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       >
-        <color attach="background" args={['#0E1113']} />
+        <color attach="background" args={[L.bg]} />
         <Suspense fallback={null}>
-          <Environment preset="studio" environmentIntensity={0.9} />
+          <Environment preset="studio" environmentIntensity={L.envI} />
         </Suspense>
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[6, 12, 9]} intensity={1.6} />
-        <directionalLight position={[-8, 3, -7]} intensity={0.7} color="#BFD4FF" />
+        <ambientLight intensity={L.amb} />
+        <directionalLight position={[6, 12, 9]} intensity={L.key[1]} color={L.key[0]} />
+        <directionalLight position={[-8, 3, -7]} intensity={L.fill[1]} color={L.fill[0]} />
         <Turntable on={spin && !reduced}>
           <group ref={g => { pieceHandle.current = g }}>
             <Piece spec={spec} />
@@ -82,6 +94,12 @@ export function Scene() {
       </Canvas>
 
       <div className="stage-hud">{hudChips(spec)}</div>
+
+      <div className="stage-light">
+        {SCENES.map(s => (
+          <button key={s} className="sbtn" aria-pressed={scene === s} onClick={() => setScene(s)}>{LIGHTING[s].label}</button>
+        ))}
+      </div>
 
       <div className="stage-foot">
         <div className="scalebar"><i /> Drag to orbit · scroll to zoom</div>

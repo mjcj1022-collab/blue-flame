@@ -38,6 +38,8 @@ code{font-family:var(--mono);font-size:.92em}
 .stage-foot{position:absolute;left:0;right:0;bottom:0;padding:14px 20px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;pointer-events:none}
 .scalebar{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;color:#6E787B;text-transform:uppercase}
 .stage-btns{display:flex;gap:8px;pointer-events:auto}
+.stage-light{position:absolute;right:20px;top:56px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60%;pointer-events:auto}
+.stage-light .sbtn{padding:6px 9px;font-size:9px}
 .sbtn{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;background:rgba(14,17,19,.8);border:1px solid var(--rule-dark);color:#9AA4A7;padding:7px 11px;cursor:pointer}
 .sbtn:hover{color:#fff}
 .sbtn[aria-pressed="true"]{background:var(--karat);border-color:var(--karat);color:#141414;font-weight:700}
