@@ -22,6 +22,7 @@ type Mode = 'design' | 'model'
 function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => void; onLab: () => void }) {
   const spec = useDesign(s => s.spec)
   const reset = useDesign(s => s.reset)
+  const shop = useDesign(s => s.shop)
   const [shared, setShared] = useState(false)
   const m = computeMetal(spec)
   const p = computePrice(spec)
@@ -31,7 +32,7 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
   return (
     <header className="mast">
       <div className="mast-in">
-        <span className="logo">BLUE&nbsp;<em>FLAME</em></span>
+        <span className="logo">{shop.name === 'Blue Flame' ? <>BLUE&nbsp;<em>FLAME</em></> : shop.name}</span>
         <div className="mode-tabs">
           <button aria-pressed={mode === 'design'} onClick={() => setMode('design')}>Design</button>
           <button aria-pressed={mode === 'model'} onClick={() => setMode('model')}>Sculpt</button>
@@ -41,7 +42,7 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
             <span className="tag">{CATEGORY_LABEL[spec.category]}</span>
             <span className="mast-fig">{m.finished.toFixed(2)} g finished</span>
             <span className="mast-fig">{m.pour.toFixed(2)} g to pour</span>
-            <span className="mast-fig strong">{money(p.total)}</span>
+            {!shop.hideCost && <span className="mast-fig strong">{money(p.total)}</span>}
             <button className="mast-lab" onClick={share}>{shared ? 'Link copied' : 'Share'}</button>
           </>
         ) : (

@@ -73,7 +73,7 @@ function stoneLines(spec: DesignSpec): string[] {
   ].filter(Boolean)
 }
 
-function techSheet(spec: DesignSpec) {
+function techSheet(spec: DesignSpec, brand = 'Blue Flame') {
   const p = computePrice(spec)
   const m = p.metal
   const alloy = alloyById(spec.metal.alloyId)
@@ -81,7 +81,7 @@ function techSheet(spec: DesignSpec) {
   const { count } = stoneUnits(spec)
 
   return [
-    `BLUE FLAME — TECH SHEET  (${CATEGORY_LABEL[spec.category]})`,
+    `${brand.toUpperCase()} — TECH SHEET  (${CATEGORY_LABEL[spec.category]})`,
     '',
     ...geometryLines(spec),
     '',
@@ -128,13 +128,16 @@ export function QuotePanel() {
   const spec = useDesign(s => s.spec)
   const market = useDesign(s => s.market)
   const setMarket = useDesign(s => s.setMarket)
+  const shop = useDesign(s => s.shop)
+  const setShop = useDesign(s => s.setShop)
   const [costOpen, setCostOpen] = useState(false)
   const p = computePrice(spec)
   const alloy = alloyById(spec.metal.alloyId)
   const hasStones = p.stoneCount > 0
+  const showCost = !shop.hideCost
 
   const download = () => {
-    const blob = new Blob([techSheet(spec)], { type: 'text/plain' })
+    const blob = new Blob([techSheet(spec, shop.name)], { type: 'text/plain' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `blue-flame-${spec.category}-${Date.now()}.txt`
@@ -147,7 +150,7 @@ export function QuotePanel() {
   }
 
   const downloadAppraisal = () => {
-    const blob = new Blob([appraisal(spec)], { type: 'text/plain' })
+    const blob = new Blob([appraisal(spec, shop.name)], { type: 'text/plain' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `blue-flame-appraisal-${spec.category}-${Date.now()}.txt`
@@ -157,25 +160,40 @@ export function QuotePanel() {
 
   return (
     <div className="panel-block quote">
-      <div className="qline"><span>Net metal — {alloy.name}</span><span>{money(p.metalCost)}</span></div>
-      {hasStones && <div className="qline"><span>{p.stoneCount > 1 ? `${p.stoneCount} stones` : 'Center stone'}</span><span>{money(p.stoneCost)}</span></div>}
-      {p.accentCount > 0 && <div className="qline"><span>{p.accentCount} accent stones + setting</span><span>{money(p.accentCost)}</span></div>}
-      {hasStones && <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>}
-      {p.platingFee > 0 && <div className="qline"><span>Rhodium plating</span><span>{money(p.platingFee)}</span></div>}
-      {p.finishExtra > 0 && <div className="qline"><span>Surface finish</span><span>{money(p.finishExtra)}</span></div>}
-      {p.engraveFee > 0 && <div className="qline"><span>Engraving</span><span>{money(p.engraveFee)}</span></div>}
-      <div className="qline"><span>Cast, finish, polish</span><span>{money(p.finishFee)}</span></div>
-      <div className="qtotal">
-        <span className="lbl">Estimate</span>
-        <span className="amt">{money(p.total)}</span>
-      </div>
+      {showCost ? (
+        <>
+          <div className="qline"><span>Net metal — {alloy.name}</span><span>{money(p.metalCost)}</span></div>
+          {hasStones && <div className="qline"><span>{p.stoneCount > 1 ? `${p.stoneCount} stones` : 'Center stone'}</span><span>{money(p.stoneCost)}</span></div>}
+          {p.accentCount > 0 && <div className="qline"><span>{p.accentCount} accent stones + setting</span><span>{money(p.accentCost)}</span></div>}
+          {hasStones && <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>}
+          {p.platingFee > 0 && <div className="qline"><span>Rhodium plating</span><span>{money(p.platingFee)}</span></div>}
+          {p.finishExtra > 0 && <div className="qline"><span>Surface finish</span><span>{money(p.finishExtra)}</span></div>}
+          {p.engraveFee > 0 && <div className="qline"><span>Engraving</span><span>{money(p.engraveFee)}</span></div>}
+          <div className="qline"><span>Cast, finish, polish</span><span>{money(p.finishFee)}</span></div>
+          <div className="qtotal">
+            <span className="lbl">Estimate</span>
+            <span className="amt">{money(p.total)}</span>
+          </div>
+        </>
+      ) : (
+        <div className="qtotal"><span className="lbl">Cost basis hidden</span><span className="amt" style={{ fontSize: 15, color: 'var(--karat-lt)' }}>Associate mode</span></div>
+      )}
       <div className="qact">
         <button className="primary" onClick={download}>Tech sheet</button>
         <button className="ghost" onClick={downloadAppraisal}>Appraisal</button>
         <button className="ghost" onClick={copySpec}>Copy spec</button>
       </div>
 
-      <h4 style={{ marginTop: 18, cursor: 'pointer' }} onClick={() => setCostOpen(o => !o)}>
+      <h4 style={{ marginTop: 18 }}>Shop</h4>
+      <input className="lib-name" style={{ width: '100%' }} value={shop.name}
+        onChange={e => setShop({ name: e.target.value })} onBlur={e => { if (!e.target.value.trim()) setShop({ name: 'Blue Flame' }) }} placeholder="Shop name (white-label)" />
+      <label className="filter-row" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={shop.hideCost} onChange={e => setShop({ hideCost: e.target.checked })} />
+        Sales-associate mode<small>hide cost basis</small>
+      </label>
+
+      {showCost && (<>
+      <h4 style={{ marginTop: 14, cursor: 'pointer' }} onClick={() => setCostOpen(o => !o)}>
         Cost settings<button className="unit">{costOpen ? 'hide' : 'edit'}</button>
       </h4>
       {costOpen && (
@@ -190,6 +208,7 @@ export function QuotePanel() {
         Spot values are illustrative. Set <b>Metal spot ×</b> from your live feed and tune
         margin and labor to your shop before quoting a client.
       </p>
+      </>)}
     </div>
   )
 }

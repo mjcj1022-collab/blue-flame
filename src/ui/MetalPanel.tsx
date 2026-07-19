@@ -5,6 +5,7 @@ import { METAL_FORMS, metalFormById } from '../catalog'
 
 export function MetalPanel() {
   const { spec, unit, toggleUnit, compareOpen, toggleCompare, setAlloy, setMetalForm } = useDesign()
+  const hideCost = useDesign(s => s.shop.hideCost)
   const m = computeMetal(spec)
   const form = metalFormById(spec.metal.form)
   const all = compareAlloys(spec)
@@ -34,8 +35,8 @@ export function MetalPanel() {
         <div className="qline sub"><span>Sprue + button</span><span>{w(m.sprue + m.button)}</span></div>
         <div className="qline hi"><span>Metal to pour <i>order this much</i></span><span>{w(m.pour)}</span></div>
         <div className="qline sub"><span>Pattern equivalent</span><span>{m.patternWax.toFixed(2)} g wax · {m.patternResin.toFixed(2)} g resin</span></div>
-        <div className="qline sub"><span>Metal purchased</span><span>{money(m.purchaseCost)}</span></div>
-        <div className="qline sub"><span>Scrap recovery credit</span><span>−{money(m.scrapCredit)}</span></div>
+        {!hideCost && <div className="qline sub"><span>Metal purchased</span><span>{money(m.purchaseCost)}</span></div>}
+        {!hideCost && <div className="qline sub"><span>Scrap recovery credit</span><span>−{money(m.scrapCredit)}</span></div>}
 
         <p className="disc">
           Order <b>{m.pourRatio.toFixed(2)}×</b> the cast weight. {form.note} Sprue and button come back as clean scrap.
@@ -59,7 +60,7 @@ export function MetalPanel() {
                   <th>Finished</th>
                   <th>To pour</th>
                   <th>Fine {'\u2009'}</th>
-                  <th>Net metal</th>
+                  {!hideCost && <th>Net metal</th>}
                 </tr>
               </thead>
               <tbody>
@@ -79,7 +80,7 @@ export function MetalPanel() {
                     <td>{w(a.finished)}</td>
                     <td>{w(a.pour)}</td>
                     <td>{a.fineGrams.toFixed(2)} g {a.alloy.symbol}</td>
-                    <td className={a.netMetalCost === cheapest ? 'best' : ''}>{money(a.netMetalCost)}</td>
+                    {!hideCost && <td className={a.netMetalCost === cheapest ? 'best' : ''}>{money(a.netMetalCost)}</td>}
                   </tr>
                 ))}
               </tbody>

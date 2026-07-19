@@ -12,6 +12,8 @@ interface DesignStore {
   compareOpen: boolean
   market: Market
   setMarket: (patch: Partial<Market>) => void
+  shop: { name: string; hideCost: boolean }
+  setShop: (patch: Partial<{ name: string; hideCost: boolean }>) => void
   viewWire: boolean
   toggleWire: () => void
   explode: number
@@ -60,6 +62,8 @@ export const useDesign = create<DesignStore>(set => ({
   market: { ...MARKET },
   // Update the shared engine settings and clone spec so every price display refreshes.
   setMarket: patch => { applyMarket(patch); set(s => ({ market: { ...s.market, ...patch }, spec: { ...s.spec } })) },
+  shop: { name: 'Blue Flame', hideCost: false },
+  setShop: patch => set(s => ({ shop: { ...s.shop, ...patch } })),
   viewWire: false,
   toggleWire: () => set(s => ({ viewWire: !s.viewWire })),
   explode: 0,
