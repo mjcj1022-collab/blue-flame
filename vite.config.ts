@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+// Relative base on build so the bundle works at any path (GitHub Pages
+// subpath, Netlify root, or a drag-drop deploy); '/' for local dev.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? './' : '/',
   plugins: [react()],
   build: {
     rollupOptions: {
@@ -11,4 +14,4 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1200
   }
-})
+}))
