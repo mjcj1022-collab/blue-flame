@@ -1,0 +1,22 @@
+# Render blueprint for the Blue Flame API.
+# In Render: New → Blueprint → point at this repo. Render reads this file.
+services:
+  - type: web
+    name: blue-flame-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run seed && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true            # Render generates a strong secret
+      - key: CLIENT_ORIGIN
+        value: https://mjcj1022-collab.github.io
+      - key: DB_FILE
+        value: /var/data/blueflame.db  # persists only with the disk below
+    disk:
+      name: blue-flame-data
+      mountPath: /var/data
+      sizeGB: 1                        # a persistent disk keeps the SQLite file

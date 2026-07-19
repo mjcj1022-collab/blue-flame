@@ -27,6 +27,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Set repo variable VITE_API_URL to your hosted backend to make the
+          # live site use it. Unset = the app runs standalone. (Settings →
+          # Secrets and variables → Actions → Variables)
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
