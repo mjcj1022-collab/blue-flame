@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useDesign } from '../state/design'
 import { computePrice, stoneUnits } from '../lib/pricing'
 import { appraisal } from '../lib/appraisal'
+import { textToPdf, bodyAfterTitle } from '../lib/pdf'
 import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById, isGradeable, gradeLabel } from '../catalog'
 import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
@@ -136,13 +137,10 @@ export function QuotePanel() {
   const hasStones = p.stoneCount > 0
   const showCost = !shop.hideCost
 
+  const slug = shop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   const download = () => {
-    const blob = new Blob([techSheet(spec, shop.name)], { type: 'text/plain' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `blue-flame-${spec.category}-${Date.now()}.txt`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    textToPdf(shop.name, `Technical Specification — ${CATEGORY_LABEL[spec.category]}`,
+      bodyAfterTitle(techSheet(spec, shop.name)), `${slug}-techsheet-${spec.category}.pdf`)
   }
 
   const copySpec = async () => {
@@ -150,12 +148,8 @@ export function QuotePanel() {
   }
 
   const downloadAppraisal = () => {
-    const blob = new Blob([appraisal(spec, shop.name)], { type: 'text/plain' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `blue-flame-appraisal-${spec.category}-${Date.now()}.txt`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    textToPdf(shop.name, 'Insurance Appraisal',
+      bodyAfterTitle(appraisal(spec, shop.name)), `${slug}-appraisal-${spec.category}.pdf`)
   }
 
   return (
