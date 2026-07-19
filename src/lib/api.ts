@@ -34,6 +34,7 @@ export const api = {
   listDesigns: () => req('/api/designs'),
   saveDesign: (name: string, spec: unknown) => req('/api/designs', { method: 'POST', body: JSON.stringify({ name, spec }) }),
   loadDesign: (id: string) => req(`/api/designs/${id}`),
+  deleteDesign: (id: string) => req(`/api/designs/${id}`, { method: 'DELETE' }),
   createOrder: (design_id: string) => req('/api/orders', { method: 'POST', body: JSON.stringify({ design_id }) }),
   advanceOrder: (id: string, stage: string) => req(`/api/orders/${id}/stage`, { method: 'PATCH', body: JSON.stringify({ stage }) })
 }

@@ -66,6 +66,11 @@ app.get('/api/designs/:id', requireAuth, (req, res) => {
   res.json({ ...r, spec: JSON.parse(r.spec) })
 })
 
+app.delete('/api/designs/:id', requireAuth, (req, res) => {
+  const info = db.prepare('DELETE FROM designs WHERE id = ? AND tenant_id = ?').run(req.params.id, me(req).tenant_id)
+  res.json({ deleted: info.changes })
+})
+
 app.put('/api/designs/:id', requireAuth, (req, res) => {
   const { name, spec } = req.body ?? {}
   const info = db.prepare("UPDATE designs SET name = COALESCE(?, name), spec = COALESCE(?, spec), updated_at = datetime('now') WHERE id = ? AND tenant_id = ?")

@@ -3,13 +3,23 @@ import { useAuth } from '../state/auth'
 
 export function Login() {
   const login = useAuth(s => s.login)
+  const loginRemote = useAuth(s => s.loginRemote)
+  const backend = useAuth(s => s.backend)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!login(username, password)) setError(true)
+    if (backend) {
+      setBusy(true)
+      const ok = await loginRemote(username, password)
+      setBusy(false)
+      if (!ok) setError(true)
+    } else if (!login(username, password)) {
+      setError(true)
+    }
   }
 
   return (
@@ -30,7 +40,8 @@ export function Login() {
         </label>
 
         {error && <div className="login-err">Wrong username or password.</div>}
-        <button className="login-btn" type="submit">Sign in</button>
+        <button className="login-btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        {backend && <p className="login-sub" style={{ margin: '2px 0 -4px' }}>Connected to backend</p>}
       </form>
     </div>
   )
