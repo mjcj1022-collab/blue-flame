@@ -1,7 +1,8 @@
 import { useDesign } from '../state/design'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, shapeById, stoneMm } from '../catalog'
-import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice } from '../lib/sizing'
+import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails } from '../lib/pricing'
+import { settingById } from '../catalog'
 import {
   type ProductCategory, type BraceletKind, type EarringBack,
   CATEGORY_LABEL, hasCenterStone, stoneOnPiece, NO_STONE
@@ -60,6 +61,8 @@ function TemplatePicker() {
 function RingControls() {
   const { spec, setRing, setFit } = useDesign()
   const advice = fitAdvice(spec.ring.size, spec.ring.width, spec.ring.fit)
+  const conv = sizeConversions(spec.ring.size)
+  const resize = settingById(spec.setting.typeId).resizeRange
   return (
     <>
       <Group title="Ring size">
@@ -68,6 +71,10 @@ function RingControls() {
         <p className="hint">
           Inside diameter <b>{sizeToDiameter(spec.ring.size).toFixed(2)}</b> mm ·
           circumference <b>{sizeToCircumference(spec.ring.size).toFixed(2)}</b> mm
+        </p>
+        <p className="hint">
+          UK <b>{conv.uk}</b> · EU <b>{conv.eu.toFixed(1)}</b> · JP <b>{conv.jp}</b>
+          <span style={{ opacity: 0.65 }}> · resizes {resize}</span>
         </p>
         {advice.level !== 'none' && (
           <div className={`flag ${advice.level === 'warn' ? '' : 'note'}`}>

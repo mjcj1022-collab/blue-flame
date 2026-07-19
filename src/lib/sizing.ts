@@ -2,6 +2,35 @@
 export const sizeToDiameter = (size: number) => 11.6307 + 0.8128 * size
 export const diameterToSize = (mm: number) => (mm - 11.6307) / 0.8128
 export const sizeToCircumference = (size: number) => sizeToDiameter(size) * Math.PI
+export const circumferenceToSize = (mm: number) => diameterToSize(mm / Math.PI)
+
+/**
+ * Cross-market size conversions. Approximate — anchored to US 6 ≈ UK L½ ≈
+ * EU 51.9 ≈ JP 11 and linear from there. Always confirm against a physical
+ * sizer before cutting metal; national standards round differently.
+ */
+const UK_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+export function sizeToUK(usSize: number): string {
+  const idx = 2 * usSize + 0.5          // US 6 → 12.5 = L½
+  const whole = Math.floor(idx)
+  const half = idx - whole >= 0.5
+  const letter = UK_LETTERS[Math.min(Math.max(whole - 1, 0), 25)]
+  return `${letter}${half ? '½' : ''}`
+}
+
+/** EU / ISO 8653 size is the inside circumference in mm. */
+export const sizeToEU = (usSize: number): number => sizeToCircumference(usSize)
+
+/** Japanese/Chinese size number, linear anchor US 6 → 11. */
+export const sizeToJP = (usSize: number): number => Math.round(2 * usSize - 1)
+
+export interface SizeConversions { uk: string; eu: number; jp: number }
+export const sizeConversions = (usSize: number): SizeConversions => ({
+  uk: sizeToUK(usSize),
+  eu: sizeToEU(usSize),
+  jp: sizeToJP(usSize)
+})
 
 const FRACTIONS: Record<number, string> = { 0: '', 0.25: '\u00BC', 0.5: '\u00BD', 0.75: '\u00BE' }
 

@@ -4,7 +4,7 @@ import { computeMetal, convertWeight, patternToMetal, PATTERN_DENSITY } from '..
 import { computeVolume } from '../lib/volume'
 import { computePrice } from '../lib/pricing'
 import { alloyById } from '../catalog'
-import { sizeToDiameter } from '../lib/sizing'
+import { sizeToDiameter, sizeConversions } from '../lib/sizing'
 
 const spec = (over: Partial<DesignSpec['ring']> & { alloy?: string; carat?: number; setting?: string }): DesignSpec => ({
   ...DEFAULT_SPEC,
@@ -86,6 +86,12 @@ describe('sizing', () => {
     const a = computeMetal(spec({ size: 5, carat: 1 })).cast
     const b = computeMetal(spec({ size: 11, carat: 1 })).cast
     expect(b).toBeGreaterThan(a)
+  })
+  it('cross-market conversions anchor at US 6', () => {
+    const c = sizeConversions(6)
+    expect(c.uk).toBe('L½')
+    expect(c.jp).toBe(11)
+    expect(c.eu).toBeCloseTo(51.9, 0)
   })
 })
 
