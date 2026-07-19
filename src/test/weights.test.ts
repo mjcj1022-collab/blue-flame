@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SPEC, NO_STONE, type DesignSpec, type ProductCategory } from '../spec/types'
+import { setMarket, DEFAULT_MARKET } from '../lib/market'
 import { computeMetal, convertWeight, patternToMetal, PATTERN_DENSITY } from '../lib/metal'
 import { computeVolume } from '../lib/volume'
 import { computePrice } from '../lib/pricing'
@@ -149,6 +150,20 @@ describe('non-ring weight relationships hold', () => {
     expect(tennis.stoneCount).toBe(40)
     expect(chain.stoneCount).toBe(0)
     expect(tennis.stoneCost).toBeGreaterThan(chain.stoneCost)
+  })
+})
+
+describe('live market settings', () => {
+  afterEach(() => setMarket(DEFAULT_MARKET))
+  it('spot factor scales metal purchase cost', () => {
+    const base = computeMetal(cat('ring')).purchaseCost
+    setMarket({ spotFactor: 2 })
+    expect(computeMetal(cat('ring')).purchaseCost).toBeCloseTo(base * 2, 0)
+  })
+  it('margin scales the quote total', () => {
+    const base = computePrice(cat('ring')).total
+    setMarket({ margin: DEFAULT_MARKET.margin * 2 })
+    expect(computePrice(cat('ring')).total).toBeCloseTo(base * 2, 0)
   })
 })
 

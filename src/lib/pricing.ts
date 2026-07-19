@@ -4,6 +4,7 @@ import { settingById, shapeById, stoneById, stoneMm, finishById, alloyById, isGr
 import { computeMetal, type MetalResult } from './metal'
 import { engraveFee } from './engrave'
 import { isHidden } from './features'
+import { MARKET } from './market'
 
 export const FINISH_FEE = 95     // cast, file, sand, pre-polish, final polish
 export const RHODIUM_FEE = 45    // white-metal rhodium plating pass
@@ -63,12 +64,12 @@ export function computePrice(spec: DesignSpec): PriceResult {
   const accentCt = mOver?.caratEach ?? setting.accentCt ?? 0.01
   const qMult = meleeQuality(mOver?.quality ?? 'gh').mult
   const sMult = meleeStyle(mOver?.style ?? 'bright').mult
-  const accentCost = melee * (stone.rate * 0.5 * qMult) * Math.pow(accentCt, stone.exponent) + melee * MELEE_LABOR_EACH * sMult
+  const accentCost = melee * (stone.rate * 0.5 * qMult) * Math.pow(accentCt, stone.exponent) + melee * MARKET.meleeLabor * sMult
 
-  const platingFee = spec.metal.rhodium && metal.alloy.platable ? RHODIUM_FEE : 0
+  const platingFee = spec.metal.rhodium && metal.alloy.platable ? MARKET.rhodiumFee : 0
   const finishExtra = finishById(spec.finish).fee
   const engrave = isHidden(spec, 'engraving') ? 0 : engraveFee(spec)
-  const subtotal = metal.netMetalCost + stoneCost + settingFee + accentCost + platingFee + FINISH_FEE + finishExtra + engrave
+  const subtotal = metal.netMetalCost + stoneCost + settingFee + accentCost + platingFee + MARKET.finishFee + finishExtra + engrave
 
   return {
     metal,
@@ -79,11 +80,11 @@ export function computePrice(spec: DesignSpec): PriceResult {
     accentCost,
     accentCount: melee,
     platingFee,
-    finishFee: FINISH_FEE,
+    finishFee: MARKET.finishFee,
     finishExtra,
     engraveFee: engrave,
     subtotal,
-    total: subtotal * MARGIN
+    total: subtotal * MARKET.margin
   }
 }
 

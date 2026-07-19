@@ -3,12 +3,15 @@ import {
   DEFAULT_SPEC, type DesignSpec, type FitProfile, type ProductCategory, type FinishId
 } from '../spec/types'
 import { registerAlloy, type Alloy } from '../catalog'
+import { MARKET, setMarket as applyMarket, type Market } from '../lib/market'
 import type { WeightUnit } from '../lib/units'
 
 interface DesignStore {
   spec: DesignSpec
   unit: WeightUnit
   compareOpen: boolean
+  market: Market
+  setMarket: (patch: Partial<Market>) => void
   setCategory: (c: ProductCategory) => void
   setRing: (patch: Partial<DesignSpec['ring']>) => void
   setPendant: (patch: Partial<DesignSpec['pendant']>) => void
@@ -43,6 +46,9 @@ export const useDesign = create<DesignStore>(set => ({
   spec: DEFAULT_SPEC,
   unit: 'g',
   compareOpen: true,
+  market: { ...MARKET },
+  // Update the shared engine settings and clone spec so every price display refreshes.
+  setMarket: patch => { applyMarket(patch); set(s => ({ market: { ...s.market, ...patch }, spec: { ...s.spec } })) },
   setCategory: c => set(s => ({ spec: { ...s.spec, category: c } })),
   setRing: patch => set(s => ({ spec: { ...s.spec, ring: { ...s.spec.ring, ...patch } } })),
   setPendant: patch => set(s => ({ spec: { ...s.spec, pendant: { ...s.spec.pendant, ...patch } } })),

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useDesign } from '../state/design'
 import { computePrice, stoneUnits } from '../lib/pricing'
 import { alloyById, shapeById, stoneById, settingById, stoneMm, finishById, isGradeable, gradeLabel } from '../catalog'
@@ -124,6 +125,9 @@ function techSheet(spec: DesignSpec) {
 
 export function QuotePanel() {
   const spec = useDesign(s => s.spec)
+  const market = useDesign(s => s.market)
+  const setMarket = useDesign(s => s.setMarket)
+  const [costOpen, setCostOpen] = useState(false)
   const p = computePrice(spec)
   const alloy = alloyById(spec.metal.alloyId)
   const hasStones = p.stoneCount > 0
@@ -159,9 +163,21 @@ export function QuotePanel() {
         <button className="primary" onClick={download}>Tech sheet</button>
         <button className="ghost" onClick={copySpec}>Copy spec</button>
       </div>
+
+      <h4 style={{ marginTop: 18, cursor: 'pointer' }} onClick={() => setCostOpen(o => !o)}>
+        Cost settings<button className="unit">{costOpen ? 'hide' : 'edit'}</button>
+      </h4>
+      {costOpen && (
+        <div className="cost-grid">
+          <label>Metal spot ×<input type="number" step={0.05} value={market.spotFactor} onChange={e => setMarket({ spotFactor: Math.max(0, +e.target.value) })} /></label>
+          <label>Margin ×<input type="number" step={0.05} value={market.margin} onChange={e => setMarket({ margin: Math.max(1, +e.target.value) })} /></label>
+          <label>Finish fee $<input type="number" step={5} value={market.finishFee} onChange={e => setMarket({ finishFee: Math.max(0, +e.target.value) })} /></label>
+          <label>Melee labor $<input type="number" step={1} value={market.meleeLabor} onChange={e => setMarket({ meleeLabor: Math.max(0, +e.target.value) })} /></label>
+        </div>
+      )}
       <p className="disc">
-        Metal priced from illustrative spot values. Wire <code>Alloy.spot</code> to a live feed
-        before quoting a client.
+        Spot values are illustrative. Set <b>Metal spot ×</b> from your live feed and tune
+        margin and labor to your shop before quoting a client.
       </p>
     </div>
   )

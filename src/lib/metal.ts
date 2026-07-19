@@ -1,6 +1,7 @@
 import type { DesignSpec } from '../spec/types'
 import { usesSetting } from '../spec/types'
 import { ALLOYS, CUSTOM_ALLOYS, alloyById, settingById, metalFormById, type Alloy } from '../catalog'
+import { MARKET } from './market'
 import { computeVolume } from './volume'
 import { OZT } from './units'
 
@@ -83,6 +84,7 @@ function metalFromVolume(volume: number, alloy: Alloy, spec: DesignSpec): MetalR
   const meltLoss = Math.max(0, alloy.meltLoss + form.meltLossAdd)
   const premium = Math.max(0, alloy.premium + form.premiumAdd)
 
+  const spot = alloy.spot * MARKET.spotFactor
   const cast = (volume / 1000) * alloy.density
   const loss = finishingLoss(spec, alloy)
   const finished = cast * (1 - loss)
@@ -101,11 +103,11 @@ function metalFromVolume(volume: number, alloy: Alloy, spec: DesignSpec): MetalR
   let scrapCredit: number
   if (alloy.precious) {
     // Priced on fine troy ounces of the precious content; scrap comes back.
-    purchaseCost = ((pour * alloy.fine) / OZT) * alloy.spot * (1 + premium)
+    purchaseCost = ((pour * alloy.fine) / OZT) * spot * (1 + premium)
     const scrapClean =
-      (((sprue + button) * RECOVERY.cleanFraction * alloy.fine) / OZT) * alloy.spot * RECOVERY.cleanPayout
+      (((sprue + button) * RECOVERY.cleanFraction * alloy.fine) / OZT) * spot * RECOVERY.cleanPayout
     const scrapSweep =
-      ((lossGrams * RECOVERY.sweepFraction * alloy.fine) / OZT) * alloy.spot * RECOVERY.sweepPayout
+      ((lossGrams * RECOVERY.sweepFraction * alloy.fine) / OZT) * spot * RECOVERY.sweepPayout
     scrapCredit = scrapClean + scrapSweep
   } else {
     // Base / contemporary metals: priced per gram of stock, scrap value negligible.

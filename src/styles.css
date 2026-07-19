@@ -135,6 +135,12 @@ table.cmp td.best{color:var(--patina);font-weight:700}
 .xyz input:focus{border-color:var(--karat);outline:none}
 select.lib-name{appearance:none;-webkit-appearance:none}
 
+/* cost editor */
+.cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 2px}
+.cost-grid label{display:flex;justify-content:space-between;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:#8A9295}
+.cost-grid input{width:58px;background:var(--graphite-2);border:1px solid var(--rule-dark);color:#DDE2E3;font-family:var(--mono);font-size:11px;padding:5px 6px;text-align:right}
+.cost-grid input:focus{border-color:var(--karat);outline:none}
+
 /* grading */
 .grade-opts{display:flex;flex-wrap:wrap;gap:4px}
 .grade-opts .opt{flex:0 0 auto;min-width:0;padding:7px 10px;font-size:11px}
