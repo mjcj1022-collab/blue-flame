@@ -248,6 +248,21 @@ table.cmp.variants td,table.cmp.variants th{white-space:nowrap}
 .co-ok{font-size:15px;color:#5fb87a;text-align:center;padding:20px 0;margin:0}
 .co-note{margin-top:2px}
 
+/* free-draw sketch pad */
+.sketch-body{display:grid;grid-template-columns:auto 1fr;gap:0;overflow:hidden;min-height:0}
+.sketch-canvas{padding:20px 24px;border-right:1px solid var(--rule-dark);display:flex;align-items:center;justify-content:center}
+.sketch-svg{width:280px;height:320px;background:#0E1113;border:1px solid var(--rule-dark);touch-action:none;cursor:crosshair;display:block}
+.sk-grid{stroke:#20272a;stroke-width:1}
+.sk-axis{stroke:var(--karat);stroke-width:1.5;stroke-dasharray:3 4}
+.sk-axis.dim{stroke:#39424680;stroke-dasharray:2 4}
+.sk-path{fill:none;stroke:var(--karat-lt);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.sk-dot{fill:var(--karat)}
+.sketch-side{padding:18px 24px;overflow-y:auto}
+.opt.primary{background:var(--karat);color:#141414;border-color:var(--karat)}
+.opt.primary:hover:not(:disabled){background:var(--karat-lt)}
+.opt.primary:disabled{opacity:.4;cursor:not-allowed}
+@media (max-width:640px){.sketch-body{grid-template-columns:1fr}.sketch-canvas{border-right:none;border-bottom:1px solid var(--rule-dark)}}
+
 /* production */
 .mfg-sum{margin-left:auto;display:flex;gap:8px;font-family:var(--mono);font-size:9px;letter-spacing:.04em}
 .mfg-sum b{font-weight:700}

@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { TransformControls, Edges } from '@react-three/drei'
 import { useModeler, type SculptObject } from '../state/modeler'
 import { renderGeometry } from '../lib/sculpt'
+import { VertexEditor } from './VertexEditor'
 
 function useSculptMaterial(o: SculptObject) {
   return useMemo(() => {
@@ -19,11 +20,14 @@ function useSculptMaterial(o: SculptObject) {
 const snapTo = (v: number, step: number) => Math.round(v / step) * step
 
 export function SculptMesh({ o }: { o: SculptObject }) {
-  const { selectedId, select, mode, update, snap } = useModeler()
+  const { selectedId, select, mode, update, snap, editMode } = useModeler()
   const ref = useRef<THREE.Mesh>(null)
   const geom = useMemo(() => renderGeometry(o), [o.kind, o.size, o.vertices, JSON.stringify(o.params)])
   const material = useSculptMaterial(o)
   const selected = selectedId === o.id
+
+  // Vertex-sculpt mode takes over rendering for the selected editable mesh.
+  if (selected && editMode === 'vertex' && o.kind === 'mesh') return <VertexEditor o={o} />
 
   const mesh = (
     <mesh

@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { bakedVertices } from '../lib/sculpt'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
 export type SculptKind = PrimitiveKind | JewelryKind
 export type SculptMaterial = 'metal' | 'gem'
 export type TransformMode = 'translate' | 'rotate' | 'scale'
+export type EditMode = 'object' | 'vertex'
 export type ShankProfile = 'round' | 'flat' | 'dshape' | 'knife' | 'comfort'
 
 /** Parameters for the jewelry-native builders. */
@@ -74,8 +76,13 @@ interface ModelerStore {
   objects: SculptObject[]
   selectedId: string | null
   mode: TransformMode
+  editMode: EditMode
+  falloff: number
   alloyId: string
   snap: boolean
+  setEditMode: (m: EditMode) => void
+  setFalloff: (r: number) => void
+  bakeToMesh: (id: string) => void
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
@@ -98,8 +105,21 @@ export const useModeler = create<ModelerStore>((set, get) => ({
   objects: [],
   selectedId: null,
   mode: 'translate',
+  editMode: 'object',
+  falloff: 2.5,
   alloyId: '14ky',
   snap: false,
+
+  setEditMode: editMode => set({ editMode }),
+  setFalloff: falloff => set({ falloff: Math.max(0.2, falloff) }),
+
+  /** Flatten any part/primitive into an editable triangle mesh at identity
+   *  transform, so its vertices can be pushed and pulled directly. */
+  bakeToMesh: id => set(s => ({
+    objects: s.objects.map(o => o.id === id
+      ? { ...o, kind: 'mesh', vertices: bakedVertices(o), position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 }
+      : o)
+  })),
 
   toggleSnap: () => set(s => ({ snap: !s.snap })),
 

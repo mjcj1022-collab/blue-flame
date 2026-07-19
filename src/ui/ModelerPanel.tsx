@@ -3,6 +3,7 @@ import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type S
 import { booleanOp, modelerToStl, sculptMetalVolume, sculptGemCarats, boundingSize, type BooleanOp } from '../lib/sculpt'
 import { ALLOYS, SHAPES, alloyById, shapeById, stoneMm } from '../catalog'
 import { money } from '../lib/units'
+import { SketchPad } from './SketchPad'
 
 const DEG = 180 / Math.PI
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -64,13 +65,14 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, alloyId, snap, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, alloyId, snap, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, bakeToMesh, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
   const [otherId, setOtherId] = useState('')
   const [seatTarget, setSeatTarget] = useState('')
   const [count, setCount] = useState(8)
+  const [sketchOpen, setSketchOpen] = useState(false)
   const [msg, setMsg] = useState('')
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
 
@@ -127,18 +129,34 @@ export function ModelerPanel() {
         <div className="opts c2">
           {PRIMS.map(([k, label]) => <button key={k} className="opt" onClick={() => add(k)}>{label}</button>)}
         </div>
-        <h4 style={{ marginTop: 18 }}>Tool</h4>
-        <div className="opts">
-          {(['translate', 'rotate', 'scale'] as const).map(m => (
-            <button key={m} className="opt" aria-pressed={mode === m} onClick={() => setMode(m)}>
-              {m === 'translate' ? 'Move' : m === 'rotate' ? 'Rotate' : 'Scale'}
-            </button>
-          ))}
+        <h4 style={{ marginTop: 18 }}>Free draw</h4>
+        <div className="opts"><button className="opt tpl" onClick={() => setSketchOpen(true)}>Sketch a shape…</button></div>
+
+        <h4 style={{ marginTop: 18 }}>Edit mode</h4>
+        <div className="opts c2">
+          <button className="opt" aria-pressed={editMode === 'object'} onClick={() => setEditMode('object')}>Object</button>
+          <button className="opt" aria-pressed={editMode === 'vertex'} onClick={() => setEditMode('vertex')}>Vertices</button>
         </div>
-        <label className="filter-row" style={{ marginTop: 12 }}>
-          <input type="checkbox" checked={snap} onChange={toggleSnap} />
-          Snap to grid<small>0.5 mm · 15°</small>
-        </label>
+        {editMode === 'object' ? (
+          <>
+            <div className="opts" style={{ marginTop: 8 }}>
+              {(['translate', 'rotate', 'scale'] as const).map(m => (
+                <button key={m} className="opt" aria-pressed={mode === m} onClick={() => setMode(m)}>
+                  {m === 'translate' ? 'Move' : m === 'rotate' ? 'Rotate' : 'Scale'}
+                </button>
+              ))}
+            </div>
+            <label className="filter-row" style={{ marginTop: 12 }}>
+              <input type="checkbox" checked={snap} onChange={toggleSnap} />
+              Snap to grid<small>0.5 mm · 15°</small>
+            </label>
+          </>
+        ) : (
+          <>
+            <Slider label="Region" value={falloff} min={0.4} max={14} step={0.2} unit=" mm" on={setFalloff} />
+            <p className="disc">Select an <b>editable mesh</b>, click a point on it, then drag the gizmo. Nearby vertices follow within the region radius — small pulls one point, large sculpts a soft bulge. Convert a part with <b>Make editable</b> below.</p>
+          </>
+        )}
       </div>
 
       <div className="panel-block metalreq">
@@ -180,6 +198,18 @@ export function ModelerPanel() {
           </div>
 
           <ParamControls sel={sel} />
+
+          {sel.kind === 'mesh' ? (
+            <div className="opts" style={{ marginTop: 12 }}>
+              <button className="opt" aria-pressed={editMode === 'vertex'} onClick={() => { select(sel.id); setEditMode('vertex') }}>
+                {editMode === 'vertex' ? 'Editing vertices ✓' : 'Edit vertices'}
+              </button>
+            </div>
+          ) : (
+            <div className="opts" style={{ marginTop: 12 }}>
+              <button className="opt tpl" onClick={() => { bakeToMesh(sel.id); setEditMode('vertex') }}>Make editable →</button>
+            </div>
+          )}
 
           {!['shank', 'gem', 'head', 'bezel'].includes(sel.kind) && sel.kind !== 'mesh' && (
             <Slider label="Size" value={sel.size} min={1} max={30} step={0.5} unit="" on={v => update(sel.id, { size: v })} />
@@ -242,6 +272,8 @@ export function ModelerPanel() {
         <div className="qact" style={{ marginTop: 8 }}><button className="ghost" onClick={clear}>Clear all</button></div>
         {msg && <p className="disc">{msg}</p>}
       </div>
+
+      {sketchOpen && <SketchPad onClose={() => setSketchOpen(false)} />}
     </>
   )
 }

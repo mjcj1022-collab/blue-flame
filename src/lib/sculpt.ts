@@ -152,6 +152,49 @@ function baseGeometry(o: SculptObject): THREE.BufferGeometry {
 
 export const renderGeometry = (o: SculptObject): THREE.BufferGeometry => baseGeometry(o)
 
+/* ---------- editable-mesh conversion + free-draw ---------- */
+
+/** Positions as a flat triangle soup, converting only when indexed (avoids a
+ *  noisy three.js warning on geometry that is already non-indexed). */
+function soupPositions(geo: THREE.BufferGeometry): number[] {
+  const g = geo.getIndex() ? geo.toNonIndexed() : geo
+  const arr = Array.from(g.getAttribute('position').array as Float32Array)
+  if (g !== geo) g.dispose()
+  return arr
+}
+
+/** Triangle-soup positions of an object with its transform baked in — used to
+ *  flatten a parametric part into an editable 'mesh' at identity transform. */
+export function bakedVertices(o: SculptObject): number[] {
+  const g = bakedGeometry(o)
+  const arr = soupPositions(g)
+  g.dispose()
+  return arr
+}
+
+export type SketchMode = 'revolve' | 'extrude'
+
+/**
+ * Turn a hand-drawn 2D profile (points in mm) into mesh vertices.
+ * - revolve: spin the profile around the Y axis (x = radius ≥ 0, y = height).
+ * - extrude: treat the points as a closed outline in XY, extruded along Z.
+ */
+export function sketchToVertices(points: [number, number][], mode: SketchMode, depth = 3, segments = 64): number[] {
+  if (points.length < 2) return []
+  let geo: THREE.BufferGeometry
+  if (mode === 'revolve') {
+    const pts = points.map(([x, y]) => new THREE.Vector2(Math.max(0.02, x), y))
+    geo = new THREE.LatheGeometry(pts, Math.max(3, Math.round(segments)))
+  } else {
+    const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)))
+    geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, steps: 1 })
+    geo.translate(0, 0, -depth / 2)
+  }
+  const arr = soupPositions(geo)
+  geo.dispose()
+  return arr
+}
+
 export function objectMatrix(o: SculptObject): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
     new THREE.Vector3(...o.position),
