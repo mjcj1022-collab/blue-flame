@@ -55,12 +55,51 @@ interface DesignStore {
   toggleUnit: () => void
   toggleCompare: () => void
   reset: () => void
+  past: DesignSpec[]
+  future: DesignSpec[]
+  undo: () => void
+  redo: () => void
 }
 
-export const useDesign = create<DesignStore>(set => ({
+const HISTORY_LIMIT = 80
+
+export const useDesign = create<DesignStore>((rawSet, get) => {
+  let timeTravel = false
+  // Wrap set: whenever a mutation changes `spec`, snapshot the prior spec onto
+  // the undo stack. Non-spec changes (view toggles, market, variants) are not
+  // recorded. undo/redo flip `timeTravel` so restores don't re-enter history.
+  const call = rawSet as (p: unknown, r?: boolean) => void
+  const set = ((partial: unknown, replace?: boolean) => {
+    const before = get().spec
+    call(partial, replace)
+    const after = get().spec
+    if (!timeTravel && after !== before) {
+      call((s: DesignStore) => ({ past: [...s.past, before].slice(-HISTORY_LIMIT), future: [] }))
+    }
+  }) as typeof rawSet
+
+  return {
   spec: DEFAULT_SPEC,
   unit: 'g',
   compareOpen: true,
+  past: [],
+  future: [],
+  undo: () => {
+    const { past, spec, future } = get()
+    if (!past.length) return
+    const prev = past[past.length - 1]
+    timeTravel = true
+    rawSet({ spec: prev, past: past.slice(0, -1), future: [spec, ...future].slice(0, HISTORY_LIMIT) })
+    timeTravel = false
+  },
+  redo: () => {
+    const { past, spec, future } = get()
+    if (!future.length) return
+    const next = future[0]
+    timeTravel = true
+    rawSet({ spec: next, future: future.slice(1), past: [...past, spec].slice(-HISTORY_LIMIT) })
+    timeTravel = false
+  },
   market: { ...MARKET },
   // Update the shared engine settings and clone spec so every price display refreshes.
   setMarket: patch => { applyMarket(patch); set(s => ({ market: { ...s.market, ...patch }, spec: { ...s.spec } })) },
@@ -117,4 +156,5 @@ export const useDesign = create<DesignStore>(set => ({
   toggleUnit: () => set(s => ({ unit: s.unit === 'g' ? 'dwt' : 'g' })),
   toggleCompare: () => set(s => ({ compareOpen: !s.compareOpen })),
   reset: () => set({ spec: DEFAULT_SPEC })
-}))
+  }
+})

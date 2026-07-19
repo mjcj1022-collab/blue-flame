@@ -26,6 +26,10 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
   const spec = useDesign(s => s.spec)
   const reset = useDesign(s => s.reset)
   const shop = useDesign(s => s.shop)
+  const undo = useDesign(s => s.undo)
+  const redo = useDesign(s => s.redo)
+  const canUndo = useDesign(s => s.past.length > 0)
+  const canRedo = useDesign(s => s.future.length > 0)
   const authUser = useAuth(s => s.user)
   const logout = useAuth(s => s.logout)
   const [shared, setShared] = useState(false)
@@ -54,7 +58,13 @@ function Masthead({ mode, setMode, onLab }: { mode: Mode; setMode: (m: Mode) => 
           <span className="tag">Free-form CSG modeler</span>
         )}
         <button className="mast-lab" onClick={onLab}>Metal Lab</button>
-        {mode === 'design' && <button className="mast-reset" onClick={reset}>Reset</button>}
+        {mode === 'design' && (
+          <>
+            <button className="mast-reset" disabled={!canUndo} onClick={undo} title="Undo (Ctrl/⌘+Z)">↶</button>
+            <button className="mast-reset" disabled={!canRedo} onClick={redo} title="Redo (Ctrl/⌘+Shift+Z)">↷</button>
+            <button className="mast-reset" onClick={reset}>Reset</button>
+          </>
+        )}
         <span className="mast-user">{authUser}<button className="mast-signout" onClick={logout}>sign out</button></span>
       </div>
     </header>

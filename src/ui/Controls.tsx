@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDesign } from '../state/design'
 import { useModeler } from '../state/modeler'
 import { useWorkspace } from '../state/workspace'
@@ -423,9 +423,24 @@ function MeleeGroup() {
 
 export function Controls() {
   const { spec, setShape, setStone, setCarat, setSetting } = useDesign()
+  const undo = useDesign(s => s.undo)
+  const redo = useDesign(s => s.redo)
   const shape = shapeById(spec.center.shapeId)
   const mm = stoneMm(shape, spec.center.carat)
   const rails = guardrails(spec)
+
+  // Undo / redo shortcuts for the Design workspace (Controls only mounts here).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const t = e.target as HTMLElement
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return
+      if (e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }
+      else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redo() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo, redo])
 
   const tennis = spec.category === 'bracelet' && spec.bracelet.kind === 'tennis'
   const necklacePendant = spec.category === 'necklace' && spec.necklace.hasPendant
