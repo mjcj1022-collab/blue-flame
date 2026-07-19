@@ -4,7 +4,7 @@ import { DEFAULT_SPEC, type DesignSpec } from '../spec/types'
 
 describe('share links', () => {
   it('round-trips a spec through encode/decode', () => {
-    const spec: DesignSpec = { ...DEFAULT_SPEC, category: 'pendant', engraving: { text: 'Amor ∞', placement: 'inside', font: 'Script' } }
+    const spec: DesignSpec = { ...DEFAULT_SPEC, category: 'pendant', engraving: { text: 'Amor ∞', placement: 'inside', font: 'Script', position: 0.5 } }
     const token = encodeSpec(spec)
     expect(token).not.toContain('+')
     expect(token).not.toContain('/')

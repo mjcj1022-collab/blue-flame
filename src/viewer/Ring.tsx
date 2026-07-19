@@ -7,6 +7,7 @@ import { shankGeometry } from '../lib/sculpt'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { HaloRing } from './HaloRing'
+import { EngravingText } from './EngravingText'
 import { useMetalMaterial } from './material'
 
 export function Ring({ spec }: { spec: DesignSpec }) {
@@ -37,6 +38,8 @@ export function Ring({ spec }: { spec: DesignSpec }) {
       {bandGeo
         ? <mesh material={metal} geometry={bandGeo} />
         : <mesh material={metal} scale={[1, 1, width / thickness]}><torusGeometry args={[centreR, tube, 24, 180]} /></mesh>}
+
+      {spec.engraving.text.trim() && <EngravingText spec={spec} />}
 
       {stoneOnPiece(spec) && (
         <group position={[0, stoneY, 0]}>

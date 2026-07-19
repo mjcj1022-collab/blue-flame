@@ -322,6 +322,14 @@ function PersonalizationGroup() {
           <button key={f} className="opt" aria-pressed={spec.engraving.font === f} onClick={() => setEngraving({ font: f })}>{f}</button>
         ))}
       </div>
+      {spec.category === 'ring' && spec.engraving.text.trim() !== '' && (
+        <>
+          <div style={{ height: 14 }} />
+          <Slider id="eng-pos" label="Position on band" value={spec.engraving.position ?? 0.75} min={0} max={1} step={0.01}
+            display={`${Math.round((spec.engraving.position ?? 0.75) * 100)}%`} onChange={v => setEngraving({ position: v })} />
+          <p className="hint">Slide to move the text around the band. It renders live on the model.</p>
+        </>
+      )}
       {over && <div className="flag"><b>Too long</b>{used - cap} character(s) over the {cap}-character limit for this {spec.engraving.placement} surface.</div>}
     </Group>
   )

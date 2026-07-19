@@ -20,6 +20,7 @@ export interface Engraving {
   text: string
   placement: EngravePlacement
   font: string
+  position: number   // 0–1, where the text lands around the band
 }
 
 import type { Grading, Cert } from '../catalog/grading'
@@ -108,7 +109,7 @@ export const DEFAULT_SPEC: DesignSpec = {
   center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1.0, grading: DEFAULT_GRADING, cert: DEFAULT_CERT },
   setting: { typeId: 'p4' },
   finish: 'polish',
-  engraving: { text: '', placement: 'inside', font: 'Serif' },
+  engraving: { text: '', placement: 'inside', font: 'Serif', position: 0.75 },
   ring: DEFAULT_RING,
   pendant: DEFAULT_PENDANT,
   earring: DEFAULT_EARRING,
