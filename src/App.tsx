@@ -9,11 +9,14 @@ import { AttributesPanel } from './ui/AttributesPanel'
 import { VariantsPanel } from './ui/VariantsPanel'
 import { OrderPanel } from './ui/OrderPanel'
 import { LibraryPanel } from './ui/LibraryPanel'
+import { ProjectsPanel } from './ui/ProjectsPanel'
 import { ModelerPanel } from './ui/ModelerPanel'
 import { MetalGenerator } from './ui/MetalGenerator'
 import { useDesign } from './state/design'
+import { useModeler } from './state/modeler'
 import { useAuth } from './state/auth'
 import { useWorkspace } from './state/workspace'
+import { autosave } from './lib/autosave'
 import { computeMetal } from './lib/metal'
 import { computePrice } from './lib/pricing'
 import { money } from './lib/units'
@@ -77,11 +80,23 @@ export default function App() {
   const setMode = useWorkspace(s => s.setMode)
   const load = useDesign(s => s.load)
 
-  // A shared ?d= link opens the exact design.
+  // Restore on load: a shared ?d= link wins; otherwise the autosaved design and
+  // sculpt come back exactly as they were left. History starts clean.
   useEffect(() => {
     const shared = specFromUrl()
     if (shared) load(shared)
+    else { const saved = autosave.readDesign(); if (saved) load(saved) }
+    useDesign.setState({ past: [], future: [] })
+    const savedSculpt = autosave.readSculpt()
+    if (savedSculpt && savedSculpt.length) useModeler.setState({ objects: savedSculpt, past: [], future: [], selectedId: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Autosave both workspaces (debounced) on every change.
+  useEffect(() => {
+    const unsubD = useDesign.subscribe((st, prev) => { if (st.spec !== prev.spec) autosave.writeDesign(st.spec) })
+    const unsubS = useModeler.subscribe((st, prev) => { if (st.objects !== prev.objects) autosave.writeSculpt(st.objects) })
+    return () => { unsubD(); unsubS() }
   }, [])
 
   return (
@@ -100,6 +115,7 @@ export default function App() {
                 <ProductionPanel />
                 <OrderPanel />
                 <LibraryPanel />
+                <ProjectsPanel />
               </div>
               <QuotePanel />
             </aside>

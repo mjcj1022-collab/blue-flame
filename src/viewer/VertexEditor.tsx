@@ -13,6 +13,7 @@ import { useModeler, type SculptObject } from '../state/modeler'
  */
 export function VertexEditor({ o }: { o: SculptObject }) {
   const falloff = useModeler(s => s.falloff)
+  const symmetry = useModeler(s => s.symmetry)
   const update = useModeler(s => s.update)
 
   // Live, mutable geometry — edits write straight into this buffer for instant
@@ -64,14 +65,17 @@ export function VertexEditor({ o }: { o: SculptObject }) {
     const pos = geom.getAttribute('position') as THREE.BufferAttribute
     const arr = pos.array as Float32Array
     const r = falloff
+    const wt = (d: number) => { if (d >= r) return 0; const t = 1 - d / r; return t * t * (3 - 2 * t) }
     for (let i = 0; i < pos.count; i++) {
       const bx = base[i * 3], by = base[i * 3 + 1], bz = base[i * 3 + 2]
-      const d = Math.hypot(bx - c.x, by - c.y, bz - c.z)
-      let w = 0
-      if (d < r) { const t = 1 - d / r; w = t * t * (3 - 2 * t) }
-      arr[i * 3] = bx + dx * w
-      arr[i * 3 + 1] = by + dy * w
-      arr[i * 3 + 2] = bz + dz * w
+      const w = wt(Math.hypot(bx - c.x, by - c.y, bz - c.z))
+      let nx = bx + dx * w, ny = by + dy * w, nz = bz + dz * w
+      if (symmetry) {
+        // Mirror the pull across the YZ plane (X = 0).
+        const w2 = wt(Math.hypot(bx + c.x, by - c.y, bz - c.z))
+        nx += -dx * w2; ny += dy * w2; nz += dz * w2
+      }
+      arr[i * 3] = nx; arr[i * 3 + 1] = ny; arr[i * 3 + 2] = nz
     }
     pos.needsUpdate = true
     geom.computeVertexNormals()

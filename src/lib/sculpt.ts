@@ -195,6 +195,64 @@ export function sketchToVertices(points: [number, number][], mode: SketchMode, d
   return arr
 }
 
+/** Midpoint-subdivide a triangle soup: each triangle becomes four, so vertex
+ *  edits land on a finer mesh. Input/output are flat [x,y,z,...] positions. */
+export function subdivideSoup(verts: number[]): number[] {
+  const out: number[] = []
+  const mid = (a: number, b: number): [number, number, number] => [
+    (verts[a] + verts[b]) / 2, (verts[a + 1] + verts[b + 1]) / 2, (verts[a + 2] + verts[b + 2]) / 2
+  ]
+  const tri = (p: [number, number, number]) => out.push(p[0], p[1], p[2])
+  const at = (i: number): [number, number, number] => [verts[i], verts[i + 1], verts[i + 2]]
+  for (let i = 0; i < verts.length; i += 9) {
+    const a = at(i), b = at(i + 3), c = at(i + 6)
+    const ab = mid(i, i + 3), bc = mid(i + 3, i + 6), ca = mid(i + 6, i)
+    tri(a); tri(ab); tri(ca)
+    tri(ab); tri(b); tri(bc)
+    tri(ca); tri(bc); tri(c)
+    tri(ab); tri(bc); tri(ca)
+  }
+  return out
+}
+
+/** One spatial-Laplacian relax pass: each vertex eases toward the average of
+ *  vertices within `radius`, blended by `strength` (0..1). Smooths lumps left
+ *  by aggressive vertex pulls. A uniform hash grid keeps it ~O(n), so it stays
+ *  responsive even on the dense meshes a baked band produces. */
+export function smoothSoup(verts: number[], radius: number, strength = 0.5): number[] {
+  const n = verts.length / 3
+  const out = verts.slice()
+  if (n === 0) return out
+  const cell = Math.max(radius, 1e-3)
+  const grid = new Map<string, number[]>()
+  const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`
+  for (let i = 0; i < n; i++) {
+    const k = key(verts[i * 3], verts[i * 3 + 1], verts[i * 3 + 2])
+    const bucket = grid.get(k)
+    if (bucket) bucket.push(i); else grid.set(k, [i])
+  }
+  const r2 = radius * radius
+  for (let i = 0; i < n; i++) {
+    const xi = verts[i * 3], yi = verts[i * 3 + 1], zi = verts[i * 3 + 2]
+    const cx = Math.floor(xi / cell), cy = Math.floor(yi / cell), cz = Math.floor(zi / cell)
+    let sx = 0, sy = 0, sz = 0, cnt = 0
+    for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) for (let gz = cz - 1; gz <= cz + 1; gz++) {
+      const bucket = grid.get(`${gx},${gy},${gz}`)
+      if (!bucket) continue
+      for (const j of bucket) {
+        const dx = verts[j * 3] - xi, dy = verts[j * 3 + 1] - yi, dz = verts[j * 3 + 2] - zi
+        if (dx * dx + dy * dy + dz * dz <= r2) { sx += verts[j * 3]; sy += verts[j * 3 + 1]; sz += verts[j * 3 + 2]; cnt++ }
+      }
+    }
+    if (cnt > 0) {
+      out[i * 3] = xi + (sx / cnt - xi) * strength
+      out[i * 3 + 1] = yi + (sy / cnt - yi) * strength
+      out[i * 3 + 2] = zi + (sz / cnt - zi) * strength
+    }
+  }
+  return out
+}
+
 export function objectMatrix(o: SculptObject): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
     new THREE.Vector3(...o.position),

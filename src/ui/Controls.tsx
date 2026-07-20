@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDesign } from '../state/design'
-import { useModeler } from '../state/modeler'
+import { useModeler, SCULPT_COLORS, type ShankProfile } from '../state/modeler'
 import { useWorkspace } from '../state/workspace'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
@@ -117,22 +117,46 @@ function RingControls() {
       </Group>
       <Group title="Custom sculpting">
         <button className="opt tpl" style={{ width: '100%' }} onClick={sendRingToSculpt}>
-          Send band → Sculpt<small>Open this shank in the 3D modeler to free-draw or push vertices</small>
+          Send ring → Sculpt<small>Open band + head + stone in the 3D modeler to free-draw or push vertices</small>
         </button>
       </Group>
     </>
   )
 }
 
-/** Push the current ring band into the Sculpt workspace as an editable shank. */
+/** Push the current ring into the Sculpt workspace as an editable assembly:
+ *  band alone if it's a plain ring, or band + prong head + centre stone,
+ *  positioned so the stone sits at the top of the band. */
 function sendRingToSculpt() {
   const spec = useDesign.getState().spec
-  useModeler.getState().addPart('shank', {
-    ringSize: spec.ring.size,
-    width: spec.ring.width,
-    thickness: spec.ring.thickness,
-    profile: spec.ring.fit === 'comfort' ? 'comfort' : spec.ring.profile
-  }, 'Ring band')
+  const R = sizeToDiameter(spec.ring.size) / 2 + spec.ring.thickness / 2   // band top height (mm)
+
+  const band = {
+    kind: 'shank' as const, size: 6, material: 'metal' as const, color: SCULPT_COLORS.metal,
+    position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], scale: [1, 1, 1] as [number, number, number],
+    params: { ringSize: spec.ring.size, width: spec.ring.width, thickness: spec.ring.thickness, profile: (spec.ring.fit === 'comfort' ? 'comfort' : spec.ring.profile) as ShankProfile },
+    name: 'Ring band'
+  }
+
+  const hasStone = spec.center.stoneTypeId !== NO_STONE
+  if (hasStone) {
+    const stoneW = stoneMm(shapeById(spec.center.shapeId), Math.max(spec.center.carat, 0.02)).width
+    const prongs = Math.min(8, Math.max(3, parseInt(spec.setting.typeId.match(/\d+/)?.[0] ?? '4', 10) || 4))
+    const headH = Math.min(8, Math.max(3, stoneW * 0.6))
+    const head = {
+      kind: 'head' as const, size: 6, material: 'metal' as const, color: SCULPT_COLORS.metal,
+      position: [0, R + headH * 0.4, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], scale: [1, 1, 1] as [number, number, number],
+      params: { prongs, stoneW, height: headH }, name: 'Prong head'
+    }
+    const gem = {
+      kind: 'gem' as const, size: 6, material: 'gem' as const, color: SCULPT_COLORS.gem,
+      position: [0, R + headH * 0.7, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], scale: [1, 1, 1] as [number, number, number],
+      params: { shapeId: spec.center.shapeId, carat: spec.center.carat }, name: 'Centre stone'
+    }
+    useModeler.getState().addObjects([band, head, gem])
+  } else {
+    useModeler.getState().addObjects([band])
+  }
   useWorkspace.getState().setMode('model')
 }
 

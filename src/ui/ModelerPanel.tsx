@@ -65,7 +65,7 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, editMode, falloff, alloyId, snap, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, bakeToMesh, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, symmetry, alloyId, snap, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
@@ -174,6 +174,10 @@ export function ModelerPanel() {
         ) : (
           <>
             <Slider label="Region" value={falloff} min={0.4} max={14} step={0.2} unit=" mm" on={setFalloff} />
+            <label className="filter-row" style={{ marginTop: 12 }}>
+              <input type="checkbox" checked={symmetry} onChange={toggleSymmetry} />
+              Mirror-X symmetry<small>sculpt both sides at once</small>
+            </label>
             <p className="disc">Select an <b>editable mesh</b>, click a point on it, then drag the gizmo. Nearby vertices follow within the region radius — small pulls one point, large sculpts a soft bulge. Convert a part with <b>Make editable</b> below.</p>
           </>
         )}
@@ -220,11 +224,20 @@ export function ModelerPanel() {
           <ParamControls sel={sel} />
 
           {sel.kind === 'mesh' ? (
-            <div className="opts" style={{ marginTop: 12 }}>
-              <button className="opt" aria-pressed={editMode === 'vertex'} onClick={() => { select(sel.id); setEditMode('vertex') }}>
-                {editMode === 'vertex' ? 'Editing vertices ✓' : 'Edit vertices'}
-              </button>
-            </div>
+            <>
+              <div className="opts" style={{ marginTop: 12 }}>
+                <button className="opt" aria-pressed={editMode === 'vertex'} onClick={() => { select(sel.id); setEditMode('vertex') }}>
+                  {editMode === 'vertex' ? 'Editing vertices ✓' : 'Edit vertices'}
+                </button>
+              </div>
+              <div className="opts c2" style={{ marginTop: 8 }}>
+                <button className="opt" onClick={() => smoothMesh(sel.id, Math.max(falloff, 1.2))} title="Relax lumps within the region radius">Smooth</button>
+                <button className="opt" disabled={(sel.vertices?.length ?? 0) > 60000}
+                  onClick={() => (sel.vertices?.length ?? 0) > 60000 ? flash('Mesh is already very dense.') : subdivideMesh(sel.id)}
+                  title="Split each face into four for finer control">Subdivide</button>
+              </div>
+              <p className="disc">{Math.round((sel.vertices?.length ?? 0) / 3).toLocaleString()} triangles</p>
+            </>
           ) : (
             <div className="opts" style={{ marginTop: 12 }}>
               <button className="opt tpl" onClick={() => { bakeToMesh(sel.id); setEditMode('vertex') }}>Make editable →</button>

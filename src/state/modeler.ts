@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { bakedVertices } from '../lib/sculpt'
+import { bakedVertices, subdivideSoup, smoothSoup } from '../lib/sculpt'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
@@ -80,18 +80,23 @@ interface ModelerStore {
   falloff: number
   alloyId: string
   snap: boolean
+  symmetry: boolean
   past: SculptObject[][]
   future: SculptObject[][]
   undo: () => void
   redo: () => void
   setEditMode: (m: EditMode) => void
   setFalloff: (r: number) => void
+  toggleSymmetry: () => void
   bakeToMesh: (id: string) => void
+  subdivideMesh: (id: string) => void
+  smoothMesh: (id: string, radius: number) => void
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
   add: (kind: SculptKind) => void
   addPart: (kind: SculptKind, params: Partial<SculptParams>, name?: string) => void
+  addObjects: (objs: Array<Omit<SculptObject, 'id' | 'name'> & { name?: string }>) => void
   addMesh: (obj: Omit<SculptObject, 'id' | 'name'> & { name?: string }) => string
   update: (id: string, patch: Partial<SculptObject>) => void
   updateParams: (id: string, patch: Partial<SculptParams>) => void
@@ -121,6 +126,7 @@ export const useModeler = create<ModelerStore>((set, get) => {
   falloff: 2.5,
   alloyId: '14ky',
   snap: false,
+  symmetry: false,
   past: [],
   future: [],
 
@@ -137,6 +143,7 @@ export const useModeler = create<ModelerStore>((set, get) => {
 
   setEditMode: editMode => set({ editMode }),
   setFalloff: falloff => set({ falloff: Math.max(0.2, falloff) }),
+  toggleSymmetry: () => set(s => ({ symmetry: !s.symmetry })),
 
   /** Flatten any part/primitive into an editable triangle mesh at identity
    *  transform, so its vertices can be pushed and pulled directly. */
@@ -144,6 +151,16 @@ export const useModeler = create<ModelerStore>((set, get) => {
     objects: s.objects.map(o => o.id === id
       ? { ...o, kind: 'mesh', vertices: bakedVertices(o), position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 }
       : o)
+  })) },
+
+  /** Refine an editable mesh (each triangle → four) for finer vertex control. */
+  subdivideMesh: id => { record(); set(s => ({
+    objects: s.objects.map(o => o.id === id && o.kind === 'mesh' && o.vertices ? { ...o, vertices: subdivideSoup(o.vertices) } : o)
+  })) },
+
+  /** Relax an editable mesh one pass, smoothing lumps from aggressive pulls. */
+  smoothMesh: (id, radius) => { record(); set(s => ({
+    objects: s.objects.map(o => o.id === id && o.kind === 'mesh' && o.vertices ? { ...o, vertices: smoothSoup(o.vertices, radius) } : o)
   })) },
 
   toggleSnap: () => set(s => ({ snap: !s.snap })),
@@ -173,6 +190,14 @@ export const useModeler = create<ModelerStore>((set, get) => {
     const d = defaults(kind)
     const obj: SculptObject = { id: newId(), kind, name: name ?? `${LABEL[kind as SculptKind]} ${n}`, rotation: [0, 0, 0], scale: [1, 1, 1], ...d, params: { ...d.params, ...params } }
     set(s => ({ objects: [...s.objects, obj], selectedId: obj.id }))
+  },
+
+  /** Add several parts at once (e.g. a full ring assembly) in one history step. */
+  addObjects: objs => {
+    if (!objs.length) return
+    record()
+    const full: SculptObject[] = objs.map((o, i) => ({ id: newId(), name: o.name ?? `Part ${i + 1}`, ...o }))
+    set(s => ({ objects: [...s.objects, ...full], selectedId: full[0].id }))
   },
 
   addMesh: obj => {
