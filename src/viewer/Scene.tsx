@@ -8,6 +8,7 @@ import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { CATEGORY_LABEL, stoneOnPiece } from '../spec/types'
 import { Piece, viewTarget } from './Piece'
 import { pieceHandle } from './exportStl'
+import { AttributesOverlay } from '../ui/AttributesOverlay'
 
 function Turntable({ on, children }: { on: boolean; children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
@@ -105,6 +106,8 @@ export function Scene() {
       </Canvas>
 
       <div className="stage-hud">{hudChips(spec)}</div>
+
+      <AttributesOverlay />
 
       <div className="stage-light">
         {SCENES.map(s => (
