@@ -63,6 +63,11 @@ code{font-family:var(--mono);font-size:.92em}
 .attr-row.off span{opacity:.4;text-decoration:line-through}
 .attr-row button{flex:0 0 auto;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;background:none;border:1px solid var(--rule-dark);color:#9AA4A7;padding:3px 7px;cursor:pointer}
 .attr-row button:hover{color:#fff;border-color:var(--karat)}
+.attr-row.sel{background:rgba(198,162,101,.16);box-shadow:inset 3px 0 0 var(--karat)}
+.sculpt-warns{margin-top:10px;border-top:1px solid var(--rule-dark);padding-top:8px}
+.warn-line{margin:5px 0 0;font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--warn)}
+.warn-line b{color:#C77A45}
+.attr-kind{font-style:normal;font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:#6E787B;text-transform:uppercase}
 @media(max-width:560px){.stage-attrs{width:170px;left:12px}}
 
 /* panel */

@@ -358,6 +358,25 @@ export function sculptEstimate(objects: SculptObject[], alloyId: string): Sculpt
   return { vol, castG, carats, gemCount: gems.length, metalCost, stoneCost, settingLabor, finishFee, subtotal, total: subtotal * MARKET.margin }
 }
 
+/** Minimum wall / feature size, mm — below this, casting or printing gets risky. */
+export const MIN_WALL_MM = 0.8
+
+export interface SculptWarning { part: string; text: string }
+
+/** Printability / castability checks over the metal parts (thin sections). */
+export function sculptWarnings(objects: SculptObject[]): SculptWarning[] {
+  const out: SculptWarning[] = []
+  for (const o of objects) {
+    if (o.material !== 'metal') continue
+    const [w, h, d] = boundingSize(o)
+    const min = Math.min(w, h, d)
+    if (min > 0 && min < MIN_WALL_MM) {
+      out.push({ part: o.name, text: `thin section ${min.toFixed(2)} mm — below ~${MIN_WALL_MM} mm may not cast or print cleanly` })
+    }
+  }
+  return out
+}
+
 /** Bounding-box dimensions of one object, in mm [w, h, d]. */
 export function boundingSize(o: SculptObject): [number, number, number] {
   const g = bakedGeometry(o)

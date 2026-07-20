@@ -4,6 +4,7 @@ import { OrbitControls, Environment, GizmoHelper, GizmoViewport } from '@react-t
 import * as THREE from 'three'
 import { useModeler } from '../state/modeler'
 import { SculptMesh } from './SculptMesh'
+import { ObjectListOverlay } from '../ui/ObjectListOverlay'
 
 export function ModelerScene() {
   const objects = useModeler(s => s.objects)
@@ -35,6 +36,8 @@ export function ModelerScene() {
           <GizmoViewport axisColors={['#B4553C', '#4C7A3F', '#3B6FA0']} labelColor="#0E1113" />
         </GizmoHelper>
       </Canvas>
+
+      <ObjectListOverlay />
 
       {objects.length === 0 && (
         <div className="modeler-empty">

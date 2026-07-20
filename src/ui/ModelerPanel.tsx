@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
-import { booleanOp, modelerToStl, sculptEstimate, boundingSize, type BooleanOp } from '../lib/sculpt'
+import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
 import { sculptTechSheet } from '../lib/sculptDoc'
 import { textToPdf, bodyAfterTitle } from '../lib/pdf'
@@ -116,6 +116,7 @@ export function ModelerPanel() {
   const alloy = alloyById(alloyId)
   const est = sculptEstimate(objects, alloyId)
   const { vol, castG, carats, gemCount, metalCost, stoneCost, settingLabor, total } = est
+  const warnings = useMemo(() => sculptWarnings(objects), [objects])
 
   const doBoolean = (op: BooleanOp) => {
     const b = objects.find(o => o.id === otherId)
@@ -214,6 +215,11 @@ export function ModelerPanel() {
         {gemCount > 0 && <div className="qline sub"><span>Setting labor ×{gemCount}</span><span>{money(settingLabor)}</span></div>}
         <div className="qline sub"><span>Cast, finish, polish</span><span>{money(MARKET.finishFee)}</span></div>
         <div className="qtotal"><span className="lbl">Estimate</span><span className="amt">{money(total)}</span></div>
+        {warnings.length > 0 && (
+          <div className="sculpt-warns">
+            {warnings.map((w, i) => <p key={i} className="warn-line"><b>{w.part}</b> — {w.text}</p>)}
+          </div>
+        )}
         <p className="disc">Retail at ×{MARKET.margin.toFixed(2)} margin. Metal is exact from the summed part volume; stones use catalog rates. Overlaps double-count until you <b>Fuse metal</b>. Tune spot, margin and fees on the Design tab’s cost settings.</p>
       </div>
 

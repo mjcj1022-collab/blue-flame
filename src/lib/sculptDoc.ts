@@ -1,6 +1,6 @@
 import type { SculptObject } from '../state/modeler'
 import { alloyById, stoneById } from '../catalog'
-import { sculptEstimate, boundingSize } from './sculpt'
+import { sculptEstimate, sculptWarnings, boundingSize } from './sculpt'
 import { money, gToDwt } from './units'
 
 const pad = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length))
@@ -14,6 +14,7 @@ export function sculptTechSheet(objects: SculptObject[], alloyId: string, brand 
   const alloy = alloyById(alloyId)
   const est = sculptEstimate(objects, alloyId)
   const gems = objects.filter(o => o.kind === 'gem')
+  const warns = sculptWarnings(objects)
 
   const bom = objects.map((o, i) => {
     const [w, h, d] = boundingSize(o)
@@ -49,6 +50,7 @@ export function sculptTechSheet(objects: SculptObject[], alloyId: string, brand 
     '  Geometry is a custom sculpt — confirm wall thickness and stone seats',
     '  before casting. Overlapping metal parts double-count in the volume',
     '  until unioned; use "Fuse metal" for a single watertight solid, then',
-    '  export STL for printing or milling.'
+    '  export STL for printing or milling.',
+    ...(warns.length ? ['', 'PRINTABILITY', ...warns.map(w => `  ! ${w.part}: ${w.text}`)] : [])
   ].filter(Boolean).join('\n')
 }
