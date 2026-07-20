@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useDesign } from '../state/design'
 import { useModeler, SCULPT_COLORS, type ShankProfile } from '../state/modeler'
 import { useWorkspace } from '../state/workspace'
+import { parseDesign } from '../lib/nlDesign'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails, computePrice } from '../lib/pricing'
@@ -30,6 +31,32 @@ function Slider({ id, label, value, min, max, step, display, onChange }: {
       <input id={id} type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(+e.target.value)} />
     </>
+  )
+}
+
+function DescribeBar() {
+  const spec = useDesign(s => s.spec)
+  const load = useDesign(s => s.load)
+  const [text, setText] = useState('')
+  const [hint, setHint] = useState('')
+  const apply = () => {
+    if (!text.trim()) return
+    const { spec: next, matched } = parseDesign(text, spec)
+    if (!matched.length) { setHint('Didn’t catch that — try “1.5 ct oval halo in 18k rose gold”.'); setTimeout(() => setHint(''), 5000); return }
+    load(next)
+    setHint(`Applied: ${matched.join(' · ')}`)
+    setText('')
+    setTimeout(() => setHint(''), 6000)
+  }
+  return (
+    <Group title="Describe a piece">
+      <div className="lib-save">
+        <input className="lib-name" placeholder="e.g. 1.5 ct oval halo in 18k rose gold" value={text}
+          onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') apply() }} />
+        <button className="primary" onClick={apply}>Apply</button>
+      </div>
+      {hint && <p className="hint">{hint}</p>}
+    </Group>
   )
 }
 
@@ -477,6 +504,7 @@ export function Controls() {
 
   return (
     <>
+      <DescribeBar />
       <CategorySwitch />
       <TemplatePicker />
 
