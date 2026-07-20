@@ -1,23 +1,23 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { shapeById, stoneById, stoneMm, isGradeable, colorTint, clarityOptics, type Grading } from '../catalog'
+import { brilliantGeometry } from '../lib/gem'
 
 interface Props { shapeId: string; stoneTypeId: string; carat: number; grading?: Grading }
 
 /**
- * Round-brilliant proportions driven by girdle diameter. Elongated shapes are
- * the same solid scaled along Z by the length-to-width ratio. When the stone is
- * gradeable, colour grade warms the tint and clarity grade hazes it.
+ * A faceted cut stone. Girdle diameter drives the proportions; the shape's
+ * facet count sets the outline and elongated shapes scale along Z by the
+ * length-to-width ratio. Flat-shaded facets sparkle against the transmissive
+ * material. When the stone is gradeable, colour grade warms the tint and
+ * clarity grade hazes it.
  */
 export function Stone({ shapeId, stoneTypeId, carat, grading }: Props) {
   const shape = shapeById(shapeId)
   const stone = stoneById(stoneTypeId)
   const { width } = stoneMm(shape, carat)
 
-  const dims = useMemo(() => {
-    const r = width / 2
-    return { r, crownH: width * 0.16, pavH: width * 0.43, girdleH: width * 0.03, tableR: r * 0.55 }
-  }, [width])
+  const geometry = useMemo(() => brilliantGeometry(width, shape.segments), [width, shape.segments])
 
   const graded = grading && isGradeable(stoneTypeId)
   const material = useMemo(() => {
@@ -33,24 +33,15 @@ export function Stone({ shapeId, stoneTypeId, carat, grading }: Props) {
       envMapIntensity: 2.8,
       clearcoat: 1,
       clearcoatRoughness: 0,
+      flatShading: true,
       transparent: true,
       opacity: stone.transparent ? 1 : 0.97
     })
   }, [stone, width, graded, grading])
 
-  const seg = shape.segments
-
   return (
     <group scale={[1, 1, shape.lwRatio]}>
-      <mesh material={material} rotation={[Math.PI, 0, 0]} position={[0, -dims.pavH / 2 - dims.girdleH / 2, 0]}>
-        <coneGeometry args={[dims.r, dims.pavH, seg, 1]} />
-      </mesh>
-      <mesh material={material}>
-        <cylinderGeometry args={[dims.r, dims.r, dims.girdleH, seg, 1]} />
-      </mesh>
-      <mesh material={material} position={[0, dims.crownH / 2 + dims.girdleH / 2, 0]}>
-        <cylinderGeometry args={[dims.tableR, dims.r, dims.crownH, seg, 1]} />
-      </mesh>
+      <mesh geometry={geometry} material={material} />
     </group>
   )
 }
