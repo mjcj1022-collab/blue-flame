@@ -1,152 +1,157 @@
-# Mandrel
+# Blue Flame
 
-Parametric jewelry design and configuration platform.
+Fine-jewelry design studio — a parametric configurator **and** a free-form 3D
+sculptor, sharing one weight/cost engine, with an optional multi-tenant backend
+for accounts, cloud sync, orders and payments.
 
-A *mandrel* is the tapered steel rod a jeweler slides a ring onto to size it,
-form it, and true it up. It is the ring-sizing instrument, and the thing
-everything else is formed around.
-
-Live 3D configurator across five product categories with real sizing math, real
-casting weights, a per-alloy metal requirement engine, a production layer that
-exports print-ready STL, and an alloy-compounding Metal Lab.
+Live 3D across five product categories with real sizing math and casting weights,
+a per-alloy metal engine, an alloy-compounding Metal Lab, a free-form CSG modeler
+with vertex sculpting, a production layer that exports print-ready STL and tech
+sheets, and a first-run tour.
 
 ---
 
-## What it does
+## Two workspaces
 
-**Five product categories** — ring, pendant, earrings, bracelet, necklace. Each
-derives its geometry, weight and cost from the spec; nothing is ever stored as a
-mesh. Switch category and the whole model, sizing and quote rebuild.
+### Design — the parametric configurator
+Pick a category and template, then tune size, metal, stone, setting, finish and
+engraving. The 3D preview, finished weight and price update live. Nothing is
+stored as a mesh — geometry, weight and cost are **derived** from one
+`DesignSpec`, so changing any input reflows everything.
 
-- **17 templates** — solitaire variants, wedding & men's bands, studs, drops,
-  tennis, bangle, cuff, chain, pendant necklace. One click to start; every
-  template is parametric, not a frozen mesh.
-- **Sizing per category** — rings (US 3–13 quarter sizes, live UK/EU/JP
-  conversion, band-width compensation), bracelets (wrist + fit, tennis/bangle/
-  cuff/chain), necklaces (length + silhouette), earrings (stud/drop, posts,
-  backs).
-- **26 stone types · 16 shapes · 25 metals · 12 settings.** Millimetre sizing is
-  shape-dependent — a 1 ct round reads 6.47 mm; a 1 ct emerald reads 7.00 × 5.00.
-- **Plain bands** — real "no stone" support; a wedding band prices on metal +
-  finish alone.
-- **Finishes & engraving** — 7 surface finishes drive the 3D material; engraving
-  with a character limit computed from the real band circumference.
-- **Wearability & compliance guardrails** — Mohs warnings, prong-count advice,
-  top-heavy shank detection, nickel-content disclosure, non-resizable warnings.
+- **Five categories** — ring, pendant, earrings, bracelet, necklace.
+- **22 templates** — solitaire variants, halo / double-halo / three-stone / pavé /
+  channel / **eternity**, wedding & men's bands, studs, drops, tennis, bangle,
+  cuff, chain, pendant necklace. All parametric.
+- **26 stone types · 16 shapes · 25 metals · 12 settings**, with 4C stone grading
+  (cut/color/clarity/carat) driving price and the live stone material.
+- **Two-tone metals**, per-component alloys, metal-form (grain/sheet/wire/scrap)
+  smelting weights, 7 finishes, engraving rendered on the model with a position
+  slider.
+- **Eternity bands** — stones set continuously around the band, no centre stone.
+- **Attributes overlay** — a table on the left of the stage; remove or restore any
+  rendered feature (it drops from render, weight and cost).
+- **Wearability & compliance guardrails** — Mohs, prong-count, top-heavy shank,
+  nickel disclosure, non-resizable warnings.
+
+### Sculpt — the free-form 3D modeler
+Jewelry parts (shank, prong head, gem, bezel) and primitives, moved with a gizmo
+and combined with union / subtract / intersect (three-bvh-csg).
+
+- **Free draw** — sketch a profile and **Revolve** it 360° or **Extrude** it into
+  a solid.
+- **Vertex sculpting** — "Make editable" bakes any part to a mesh; click a point
+  and drag it with proportional falloff, **Mirror-X symmetry**, **Smooth**
+  (grid-accelerated) and **Subdivide**.
+- **Send ring → Sculpt** — push a whole configured ring (band + head + stone) in
+  as an editable assembly.
+- **Fuse metal** — boolean-union every metal part into one watertight solid.
+- **Live estimate** — same engine as Design: metal + stones + setting + finish ×
+  margin, plus **printability warnings** for thin sections.
+- **Export** — print-ready STL and a bill-of-materials **tech sheet** PDF.
 
 ## The Metal Lab
 
-Compound an alloy from ten pure metals (Au, Ag, Cu, Zn, Ni, Pd, Pt, Co, Sn, Ge)
-and watch it resolve live: karat, fineness, **density** (exact, inverse rule of
-mixtures), approximate melt point, resulting **colour** (copper reddens, silver
-pales, whiteners bleach to white gold), and hallmark — with disclosure notes
-(nickel allergen, high-zinc brittleness, sub-10K). Nine standard recipes
-included. "Use in design" makes the alloy the active metal and adds it to the
-per-alloy comparison.
+Compound an alloy from pure metals and watch karat, fineness, **density** (exact,
+inverse rule of mixtures), melt point, resulting **colour** and hallmark resolve
+live, with disclosure notes. "Use in design" makes it the active metal.
 
 ## The four weights
 
-"How much gold does this piece take" has four different correct answers, and
-shops lose money conflating them.
+"How much gold does this take" has four correct answers, and shops lose money
+conflating them.
 
 | Number | What it is | Who needs it |
 |---|---|---|
 | **Cast weight** | What comes out of the flask | The caster |
 | **Finished weight** | After 7–13% disappears into filing and polishing | The client, the appraisal |
-| **Metal to pour** | Piece + sprue + button + melt loss. Usually 1.7–2.0× cast | Purchasing |
+| **Metal to pour** | Piece + sprue + button + melt loss, ~1.7–2.0× cast | Purchasing |
 | **Fine metal content** | Actual grams of Au/Ag/Pt inside the alloy | Spot pricing, refining |
 
-Every design is also costed **across all alloys simultaneously** — identical
-geometry, different densities. Platinum weighs 1.60× what 14K yellow does for the
-same model. Precious metals price on fine troy ounces; contemporary metals
-(titanium, tungsten, steel, …) price per gram. Grams and pennyweight both
-supported.
+Every design is costed **across all alloys at once** — same geometry, different
+densities. Grams and pennyweight both supported.
 
-## Production layer
+## Save, sync, share
 
-- **Bill of materials** — metal, stones, findings, labor; reconciles to the penny
-  with the quote.
-- **Manufacturability checks** — minimum wall by metal, prong stock vs printer
-  resolution, tennis stone spacing, bezel closed-void, wearable weight, with
-  pass / warn / fail levels.
-- **STL export** — metal-only, true-millimetre, print-ready for wax/resin casting.
-- **Tech sheet** — dimensioned, category-aware, with full disclosure block.
+- **Autosave** — both workspaces persist to the browser and restore on refresh.
+- **Libraries** — named saved designs (with fork + version history), named saved
+  sculpts, and **projects** that bundle a design + sculpt together.
+- **Undo / redo** — on both tabs, buttons + Ctrl/⌘+Z.
+- **Share links** — a whole design encodes into a `?d=` URL that opens with no
+  login.
+- **Cloud** — when the backend is on, designs sync to your shop across devices.
 
-## Save, version, share
+## Backend (optional)
 
-- **Design library** — save, load, fork, full version history with rollback
-  (localStorage).
-- **Share links** — the entire design encodes into a URL; a `?d=` link opens the
-  exact piece with no login.
+`server/` is a self-contained API — **Node's built-in SQLite**, scrypt password
+hashing, JWT auth, multi-tenant schema, and optional **Stripe** checkout. It runs
+locally with zero external services and deploys to Render via `render.yaml`. The
+client is standalone until you set `VITE_API_URL`; login, cloud library and the
+checkout screen then light up. See [`docs/deploy-backend.md`](docs/deploy-backend.md).
+
+Seeded users: `mike` / `mike123` (admin) and `liliya` / `liliya123` (associate).
 
 ## Two things that are easy to get wrong
 
-1. **A torus under-weighs a band by ~21%.** A torus has an elliptical
-   cross-section; a real band is near-rectangular. The ratio is π/4. The shank is
-   modelled as cross-section area × centreline circumference. See
-   `src/lib/volume.ts`.
-2. **Castable resin is ~21% denser than injection wax.** A shop that keeps using
-   the old wax multiplier on 3D-printed patterns under-orders metal on every job.
-   See `PATTERN_DENSITY` in `src/lib/metal.ts`.
+1. **A torus under-weighs a band by ~21%** (π/4 — an ellipse vs a near-rectangular
+   section). The shank is modelled as cross-section area × centreline
+   circumference. See `src/lib/volume.ts`.
+2. **Castable resin is ~21% denser than injection wax.** Using the old wax
+   multiplier on printed patterns under-orders metal every job. See
+   `PATTERN_DENSITY` in `src/lib/metal.ts`.
 
 ---
 
 ## Stack
 
-React 18 · TypeScript · Vite · React Three Fiber · zustand · Vitest
+React 18 · TypeScript · Vite · React Three Fiber · three-bvh-csg · zustand ·
+jsPDF · Vitest. Backend: Node (`node:sqlite`, `node:crypto`) · Express · JWT ·
+optional Stripe.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 68 tests across weights, library, production, alloys, personalization, share
+npm test         # 137 tests
 npm run build
+
+# optional backend
+cd server && npm install && npm run seed && npm run start   # :8787
+# then, from the repo root:
+VITE_API_URL=http://localhost:8787 npm run dev
 ```
 
 ## Structure
 
 ```
 src/
-├── spec/types.ts        DesignSpec — the single source of truth (all categories).
-│                        Geometry, weight and cost are DERIVED from it.
+├── spec/types.ts        DesignSpec — the single source of truth (all categories)
 ├── catalog/             alloys, elements, shapes, stones, settings, finishes,
-│                        templates. Every row carries its own math.
+│                        grading, melee, forms, templates. Every row carries math.
 ├── lib/
-│   ├── sizing.ts        size conversions, band-width compensation
-│   ├── volume.ts        per-category parametric volume model
-│   ├── metal.ts         the four weights, per-alloy comparison
-│   ├── pricing.ts       cost breakdown + wearability/compliance guardrails
-│   ├── alloygen.ts      Metal Lab compounding engine
-│   ├── bom.ts           bill of materials
-│   ├── manufacture.ts   manufacturability checks
-│   ├── engrave.ts       engraving capacity + fee
-│   ├── library.ts       save / fork / version / rollback
-│   └── share.ts         URL encode/decode of a design
-├── viewer/              React Three Fiber scene + per-category geometry + STL export
-├── ui/                  controls, metal panel, quote, production, library, Metal Lab
+│   ├── sizing · volume · metal · pricing   parametric sizing, four weights, cost
+│   ├── sculpt · sculptDoc                   CSG, free-draw, vertex ops, estimate, tech sheet
+│   ├── alloygen · bom · manufacture         Metal Lab, BOM, DFM checks
+│   ├── library · autosave · share           save / fork / version, autosave, URL codec
+│   └── api                                  optional backend client
+├── viewer/              R3F scene, per-category geometry, modeler, vertex editor, STL
+├── ui/                  controls, panels, Metal Lab, sketch pad, tour, overlays
+├── state/               design · modeler · workspace · auth (zustand)
 └── test/                golden fixtures + engine tests
+server/                  Express + SQLite + JWT + optional Stripe (see server/README.md)
 ```
 
 ## Before this touches a client
 
-Illustrative numbers to replace: `Alloy.spot` / `Alloy.perGram` (live feed),
-`StoneType.rate` (supplier pricing), `MARGIN` in `src/lib/pricing.ts`. Densities,
-mm factors and DFM thresholds should be verified by a working jeweler.
-
-## Not yet built
-
-The client-only app covers the spec's Phases 1–3 and much of 5. Still open, and
-requiring backend infrastructure or heavy graphics work:
-
-- **Commerce & multi-tenant** (Phase 4) — Stripe payments, accounts, hosted
-  approval flow, order pipeline, REST/webhook API, white-label. Needs a server,
-  a database, and third-party accounts.
-- **Advanced visualization** — real faceted stone dispersion, hand/ear/wrist
-  try-on models, AR via WebXR, lighting scenarios, 4-up compare.
+Illustrative numbers to replace with live/supplier data: `Alloy.spot` /
+`Alloy.perGram`, `StoneType.rate`, and the shop margin / fees (Design tab → cost
+settings). Densities, mm factors and DFM thresholds should be verified by a
+working jeweler.
 
 ## Docs
 
+- [`docs/deploy-backend.md`](docs/deploy-backend.md) — Render + Stripe setup
 - [`docs/metal-weight.md`](docs/metal-weight.md) — every formula, with tables
 - [`docs/build-plan.md`](docs/build-plan.md) — phase map and architecture
 - [`docs/feature-spec.md`](docs/feature-spec.md) — full feature specification
