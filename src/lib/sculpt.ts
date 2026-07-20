@@ -143,7 +143,7 @@ function baseGeometry(o: SculptObject): THREE.BufferGeometry {
   if (o.kind === 'mesh' && o.vertices) return geomFromVertices(o.vertices)
   if (o.kind === 'sketch' && o.params?.sketch) {
     const sk = o.params.sketch
-    return geomFromVertices(sketchToVertices(sk.points, sk.mode, sk.depth, sk.segments))
+    return geomFromVertices(sketchToVertices(sk.points, sk.mode, sk.depth, sk.segments, sk.arc ?? 360))
   }
   if (JEWELRY.has(o.kind)) return jewelryGeometry(o.kind, o.params ?? {})
   return primitiveGeometry(o.kind as PrimitiveKind, o.size)
@@ -178,12 +178,13 @@ export type SketchMode = 'revolve' | 'extrude'
  * - revolve: spin the profile around the Y axis (x = radius ≥ 0, y = height).
  * - extrude: treat the points as a closed outline in XY, extruded along Z.
  */
-export function sketchToVertices(points: [number, number][], mode: SketchMode, depth = 3, segments = 64): number[] {
+export function sketchToVertices(points: [number, number][], mode: SketchMode, depth = 3, segments = 64, arcDeg = 360): number[] {
   if (points.length < 2) return []
   let geo: THREE.BufferGeometry
   if (mode === 'revolve') {
     const pts = points.map(([x, y]) => new THREE.Vector2(Math.max(0.02, x), y))
-    geo = new THREE.LatheGeometry(pts, Math.max(3, Math.round(segments)))
+    const arc = Math.max(1, Math.min(360, arcDeg)) * Math.PI / 180
+    geo = new THREE.LatheGeometry(pts, Math.max(3, Math.round(segments)), 0, arc)
   } else {
     const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)))
     geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, steps: 1 })

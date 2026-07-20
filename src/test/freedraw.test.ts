@@ -24,6 +24,19 @@ describe('free-draw sketch → geometry', () => {
   it('ignores degenerate input', () => {
     expect(sketchToVertices([[0, 0]], 'revolve')).toEqual([])
   })
+
+  it('a partial revolve sweeps a smaller footprint than a full one', () => {
+    const footprint = (arc: number) => {
+      const v = sketchToVertices(profile, 'revolve', 3, 48, arc)
+      const xs = v.filter((_, i) => i % 3 === 0), zs = v.filter((_, i) => i % 3 === 2)
+      return (Math.max(...xs) - Math.min(...xs)) + (Math.max(...zs) - Math.min(...zs))
+    }
+    const full = sketchToVertices(profile, 'revolve', 3, 48, 360)
+    const quarter = sketchToVertices(profile, 'revolve', 3, 48, 90)
+    expect(quarter.length).toBe(full.length)   // same segment count
+    expect(quarter).not.toEqual(full)          // but a different sweep
+    expect(footprint(90)).toBeLessThan(footprint(360))
+  })
 })
 
 describe('convert template → editable mesh', () => {

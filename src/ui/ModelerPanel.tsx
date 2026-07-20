@@ -39,7 +39,10 @@ function ParamControls({ sel }: { sel: SculptObject }) {
         </div>
         {sk.mode === 'extrude'
           ? <Slider label="Depth" value={sk.depth} min={0.6} max={12} step={0.2} unit=" mm" on={v => setObjectSketch(sel.id, { ...sk, depth: v })} />
-          : <Slider label="Sides" value={sk.segments} min={8} max={96} step={1} unit="" on={v => setObjectSketch(sel.id, { ...sk, segments: Math.round(v) })} />}
+          : <>
+              <Slider label="Sweep angle" value={sk.arc ?? 360} min={20} max={360} step={5} unit="°" on={v => setObjectSketch(sel.id, { ...sk, arc: v })} />
+              <Slider label="Sides" value={sk.segments} min={8} max={96} step={1} unit="" on={v => setObjectSketch(sel.id, { ...sk, segments: Math.round(v) })} />
+            </>}
       </>
     )
   }

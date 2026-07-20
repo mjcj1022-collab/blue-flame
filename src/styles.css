@@ -287,7 +287,13 @@ table.cmp.variants td,table.cmp.variants th{white-space:nowrap}
 .sk-axis.dim{stroke:#39424680;stroke-dasharray:2 4}
 .sk-path{fill:none;stroke:var(--karat-lt);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
 .sk-dot{fill:var(--karat)}
+.sk-node{fill:#0E1113;stroke:var(--karat);stroke-width:1.5;cursor:grab}
+.sk-node:hover{fill:var(--karat)}
+.sketch-dock{max-height:calc(100% - 40px);overflow-y:auto}
 .sketch-dock-ctl{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sk-check{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#9AA4A7;cursor:pointer}
+.sk-check input{accent-color:var(--karat)}
+.sk-dims{margin-left:auto;color:var(--karat-lt);letter-spacing:.02em}
 .sk-slider{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#9AA4A7}
 .sk-done{background:var(--karat);color:#141414;border-color:var(--karat);font-weight:700}
 .sk-done:hover{background:var(--karat-lt)}

@@ -15,6 +15,7 @@ export interface SketchDef {
   mode: SketchMode             // revolve (around Y) or extrude (along Z)
   depth: number                // extrude depth, mm
   segments: number             // revolve resolution
+  arc?: number                 // revolve sweep, degrees (default 360)
 }
 
 /** Parameters for the jewelry-native builders and the free-draw sketch. */
