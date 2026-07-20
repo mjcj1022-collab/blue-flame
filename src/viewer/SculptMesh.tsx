@@ -22,14 +22,15 @@ function useSculptMaterial(o: SculptObject) {
 const snapTo = (v: number, step: number) => Math.round(v / step) * step
 
 export function SculptMesh({ o }: { o: SculptObject }) {
-  const { selectedId, select, mode, update, snap, editMode } = useModeler()
+  const { selectedId, select, mode, update, snap, editMode, sketching, sketchEditId } = useModeler()
   const ref = useRef<THREE.Mesh>(null)
   const geom = useMemo(() => renderGeometry(o), [o.kind, o.size, o.vertices, JSON.stringify(o.params)])
   const material = useSculptMaterial(o)
   const selected = selectedId === o.id
 
-  // Vertex mode: drag a sketch's profile nodes (parametric) or a mesh's vertices.
-  if (selected && editMode === 'vertex' && o.kind === 'sketch' && o.params?.sketch) return <SketchNodeEditor o={o} />
+  // Sketch nodes show whenever you're editing that sketch: live while drawing, or
+  // in Vertices mode. So the live 3D render always carries draggable vertices.
+  if (o.kind === 'sketch' && o.params?.sketch && ((selected && editMode === 'vertex') || (sketching && o.id === sketchEditId))) return <SketchNodeEditor o={o} />
   if (selected && editMode === 'vertex' && o.kind === 'mesh') return <VertexEditor o={o} />
   // Surface-draw mode: emboss/cut a stroke on the selected part (any kind).
   if (selected && editMode === 'surface') return <SurfaceDraw o={o} />

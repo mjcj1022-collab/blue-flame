@@ -321,7 +321,7 @@ export const useModeler = create<ModelerStore>((set, get) => {
       position: [0, sketch.mode === 'extrude' ? 6 : 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1],
       size: 0, material: 'metal', color: GOLD, params: { sketch }
     }
-    set(s => ({ objects: [...s.objects, obj], selectedId: id }))
+    set(s => ({ objects: [...s.objects, obj], selectedId: id, sketchEditId: id }))   // track it so its 3D nodes show live
     return id
   },
 
