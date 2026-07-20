@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
 import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
+import { analyzeMesh, type DfmReport } from '../lib/dfm'
 import { sculptTechSheet } from '../lib/sculptDoc'
 import { textToPdf, bodyAfterTitle } from '../lib/pdf'
 import { ALLOYS, SHAPES, STONES, alloyById, shapeById, stoneMm } from '../catalog'
@@ -82,6 +83,7 @@ export function ModelerPanel() {
   const [sketchOpen, setSketchOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saved, setSaved] = useState<SavedSculpt[]>(() => sculptLibrary.list())
+  const [dfm, setDfm] = useState<{ id: string; r: DfmReport } | null>(null)
   const [msg, setMsg] = useState('')
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
 
@@ -263,7 +265,22 @@ export function ModelerPanel() {
                   onClick={() => (sel.vertices?.length ?? 0) > 60000 ? flash('Mesh is already very dense.') : subdivideMesh(sel.id)}
                   title="Split each face into four for finer control">Subdivide</button>
               </div>
+              <div className="opts" style={{ marginTop: 8 }}>
+                <button className="opt tpl" onClick={() => { if (sel.vertices) setDfm({ id: sel.id, r: analyzeMesh(sel.vertices) }) }} title="Ray-cast wall thickness, watertightness and overhangs">Analyze for printing</button>
+              </div>
               <p className="disc">{Math.round((sel.vertices?.length ?? 0) / 3).toLocaleString()} triangles</p>
+              {dfm && dfm.id === sel.id && (
+                <div className="dfm">
+                  <div className="dfm-metrics">
+                    <span>{dfm.r.watertight ? 'watertight' : `${dfm.r.boundaryEdges} open edges`}</span>
+                    <span>min wall {dfm.r.minWall === Infinity ? '—' : `${dfm.r.minWall.toFixed(2)} mm`}</span>
+                    <span>{Math.round(dfm.r.overhangFraction * 100)}% overhang</span>
+                  </div>
+                  {dfm.r.issues.map((iss, i) => (
+                    <p key={i} className={`dfm-line ${iss.level}`}><b>{iss.title}</b> — {iss.detail}</p>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <div className="opts" style={{ marginTop: 12 }}>
