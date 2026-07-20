@@ -45,17 +45,17 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
       </mesh>
 
       {sk.points.map((p, i) => i === pick ? null : (
-        <mesh key={i} position={handleWorld(p)} onClick={grab(i)}>
-          <sphereGeometry args={[0.5, 12, 10]} />
-          <meshBasicMaterial color="#9BB4C6" toneMapped={false} />
+        <mesh key={i} position={handleWorld(p)} onClick={grab(i)} renderOrder={10}>
+          <sphereGeometry args={[0.7, 14, 12]} />
+          <meshBasicMaterial color="#9BB4C6" toneMapped={false} depthTest={false} depthWrite={false} />
         </mesh>
       ))}
 
       {pick != null && sk.points[pick] && (
         <TransformControls key={pickKey} mode="translate" size={0.6} showZ={false} onObjectChange={drag} onMouseUp={drag}>
-          <mesh ref={handleRef} position={handleWorld(sk.points[pick])}>
-            <sphereGeometry args={[0.6, 12, 10]} />
-            <meshBasicMaterial color="#C6A265" toneMapped={false} />
+          <mesh ref={handleRef} position={handleWorld(sk.points[pick])} renderOrder={11}>
+            <sphereGeometry args={[0.8, 14, 12]} />
+            <meshBasicMaterial color="#C6A265" toneMapped={false} depthTest={false} depthWrite={false} />
           </mesh>
         </TransformControls>
       )}
