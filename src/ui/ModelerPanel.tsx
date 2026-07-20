@@ -65,7 +65,7 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, editMode, falloff, symmetry, alloyId, snap, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, symmetry, alloyId, snap, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, fuseMetal, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
@@ -123,6 +123,13 @@ export function ModelerPanel() {
       addMesh({ kind: 'mesh', vertices, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: sel.material, color: sel.color, name: `${op} result` })
       remove(sel.id); remove(b.id); setOtherId('')
     } catch { flash('Boolean failed on this geometry.') }
+  }
+
+  const metalCount = objects.filter(o => o.material === 'metal').length
+  const fuse = () => {
+    if (metalCount < 2) { flash('Need at least two metal parts to fuse.'); return }
+    try { const n = fuseMetal(); flash(n ? `Fused ${n} metal parts into one solid.` : 'Nothing to fuse.') }
+    catch { flash('Fuse failed on this geometry.') }
   }
 
   const exportStl = () => {
@@ -326,7 +333,8 @@ export function ModelerPanel() {
       </div>
 
       <div className="panel-block quote">
-        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={clear}>Clear all</button></div>
+        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={fuse} disabled={metalCount < 2}>Fuse metal</button><button className="ghost" onClick={clear}>Clear all</button></div>
+        {metalCount >= 2 && <p className="disc">Fuse unions all {metalCount} metal parts into one watertight solid for printing (gems untouched).</p>}
         {msg && <p className="disc">{msg}</p>}
       </div>
 

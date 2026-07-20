@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { bakedVertices, subdivideSoup, smoothSoup } from '../lib/sculpt'
+import { bakedVertices, subdivideSoup, smoothSoup, booleanOp } from '../lib/sculpt'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
@@ -91,6 +91,7 @@ interface ModelerStore {
   bakeToMesh: (id: string) => void
   subdivideMesh: (id: string) => void
   smoothMesh: (id: string, radius: number) => void
+  fuseMetal: () => number
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
@@ -162,6 +163,24 @@ export const useModeler = create<ModelerStore>((set, get) => {
   smoothMesh: (id, radius) => { record(); set(s => ({
     objects: s.objects.map(o => o.id === id && o.kind === 'mesh' && o.vertices ? { ...o, vertices: smoothSoup(o.vertices, radius) } : o)
   })) },
+
+  /** Boolean-union every metal part into one watertight mesh for clean STL /
+   *  3D-print export. Gems are left untouched. Returns the count fused. */
+  fuseMetal: () => {
+    const metals = get().objects.filter(o => o.material === 'metal')
+    if (metals.length < 2) return 0
+    record()
+    let acc: SculptObject = { ...metals[0], kind: 'mesh', vertices: bakedVertices(metals[0]), position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 }
+    for (let i = 1; i < metals.length; i++) {
+      try {
+        const v = booleanOp(acc, metals[i], 'union')
+        if (v.length) acc = { ...acc, vertices: v }
+      } catch { /* skip a part that fails to union; keep the rest */ }
+    }
+    const fused: SculptObject = { id: newId(), kind: 'mesh', name: 'Fused metal', vertices: acc.vertices, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: metals[0].color }
+    set(s => ({ objects: [...s.objects.filter(o => o.material !== 'metal'), fused], selectedId: fused.id }))
+    return metals.length
+  },
 
   toggleSnap: () => set(s => ({ snap: !s.snap })),
 
