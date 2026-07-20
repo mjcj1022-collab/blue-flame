@@ -9,6 +9,7 @@ export interface SettingType {
   resizeRange: string
   melee?: number      // count of accent stones (halo, pavé, channel, sides)
   accentCt?: number   // carat of each accent stone
+  allAround?: boolean // eternity — accents set around the band, no centre stone needed
   note?: string
 }
 
@@ -24,7 +25,8 @@ export const SETTINGS: SettingType[] = [
   { id:'pav', name:'Pavé',      variety:'Bright-cut',   prongs:4, bezel:false, fee:260, finishPenalty:0.02,  resizeRange:'not recommended', melee:20, accentCt:0.015, note:'Pavé shank resists resizing without disturbing the stones.' },
   { id:'chn', name:'Channel',   variety:'Flush row',    prongs:4, bezel:false, fee:220, finishPenalty:0.015, resizeRange:'plus or minus 1 size', melee:10, accentCt:0.03 },
   { id:'ten', name:'Tension',   variety:'Pressure-held', prongs:0, bezel:false, fee:320, finishPenalty:0.02, resizeRange:'not resizable', note:'Held by spring tension in the shank; cannot be resized after making.' },
-  { id:'th3', name:'Three-stone', variety:'Trilogy',    prongs:6, bezel:false, fee:200, finishPenalty:0.015, resizeRange:'plus or minus 1 size', melee:2, accentCt:0.35 }
+  { id:'th3', name:'Three-stone', variety:'Trilogy',    prongs:6, bezel:false, fee:200, finishPenalty:0.015, resizeRange:'plus or minus 1 size', melee:2, accentCt:0.35 },
+  { id:'etr', name:'Eternity',    variety:'Shared-prong, full', prongs:2, bezel:false, fee:300, finishPenalty:0.03, resizeRange:'not resizable', melee:22, accentCt:0.05, allAround:true, note:'Stones set continuously around the whole band; cannot be resized.' }
 ]
 
 export const settingById = (id: string): SettingType => SETTINGS.find(s => s.id === id) ?? SETTINGS[0]

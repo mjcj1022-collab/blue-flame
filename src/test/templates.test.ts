@@ -14,6 +14,17 @@ describe('templates', () => {
     }
   })
 
+  it('the eternity band prices accents with no centre stone', () => {
+    const t = TEMPLATES.find(x => x.id === 'eternity')!
+    const spec = t.build()
+    const p = computePrice(spec)
+    expect(p.stoneCount).toBe(0)          // no centre stone
+    expect(p.accentCount).toBeGreaterThan(0)  // but stones all around
+    expect(p.accentCost).toBeGreaterThan(0)
+    expect(p.settingFee).toBe(0)          // no solitaire setting fee
+    expect(settingById(spec.setting.typeId).allAround).toBe(true)
+  })
+
   it('halo, three-stone and pavé templates use accent-stone settings', () => {
     const ids = ['halo', 'double-halo', 'three-stone', 'pave-band', 'channel']
     for (const id of ids) {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { DesignSpec } from '../spec/types'
-import { stoneOnPiece } from '../spec/types'
+import { stoneOnPiece, NO_STONE } from '../spec/types'
 import { useDesign } from '../state/design'
 import { alloyById, settingById } from '../catalog'
 import { sizeToDiameter } from '../lib/sizing'
@@ -9,6 +9,7 @@ import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
 import { HaloRing } from './HaloRing'
+import { EternityBand } from './EternityBand'
 import { EngravingText } from './EngravingText'
 import { useMetalMaterial } from './material'
 
@@ -34,6 +35,7 @@ export function Ring({ spec }: { spec: DesignSpec }) {
 
   const setting = settingById(spec.setting.typeId)
   const halo = stoneOnPiece(spec) && (setting.id === 'hal' || setting.id === 'hl2') && (setting.melee ?? 0) > 0
+  const eternity = (setting.allAround ?? false) && (setting.melee ?? 0) > 0 && !isHidden(spec, 'halo')
   const explode = useDesign(s => s.explode)
   const tryOn = useDesign(s => s.tryOn)
   const skin = useDesign(s => s.skinTone)
@@ -52,6 +54,17 @@ export function Ring({ spec }: { spec: DesignSpec }) {
         : <mesh material={metal} scale={[1, 1, width / thickness]}><torusGeometry args={[centreR, tube, 24, 180]} /></mesh>)}
 
       {!isHidden(spec, 'engraving') && spec.engraving.text.trim() && <EngravingText spec={spec} />}
+
+      {eternity && (
+        <EternityBand
+          material={headMetal}
+          centreR={centreR}
+          tube={tube}
+          count={spec.setting.melee?.count ?? setting.melee ?? 22}
+          accentCt={spec.setting.melee?.caratEach ?? setting.accentCt ?? 0.05}
+          stoneTypeId={spec.center.stoneTypeId === NO_STONE ? 'dia' : spec.center.stoneTypeId}
+        />
+      )}
 
       {stoneOnPiece(spec) && (
         <group position={[0, stoneY + explode * 7, 0]}>

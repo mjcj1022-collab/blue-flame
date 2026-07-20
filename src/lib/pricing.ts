@@ -60,7 +60,10 @@ export function computePrice(spec: DesignSpec): PriceResult {
   // melee plus bead-setting labor. Count, size, quality and setting style are
   // designer-overridable.
   const mOver = spec.setting.melee
-  const melee = count > 0 && setting.melee && !isHidden(spec, 'halo') ? (mOver?.count ?? setting.melee) : 0
+  // Accents price with a centre stone (halo/pavé/sides) or, for an eternity
+  // band, on their own — stones set all the way around, no centre needed.
+  const meleeActive = (count > 0 || setting.allAround) && setting.melee && !isHidden(spec, 'halo')
+  const melee = meleeActive ? (mOver?.count ?? setting.melee ?? 0) : 0
   const accentCt = mOver?.caratEach ?? setting.accentCt ?? 0.01
   const qMult = meleeQuality(mOver?.quality ?? 'gh').mult
   const sMult = meleeStyle(mOver?.style ?? 'bright').mult

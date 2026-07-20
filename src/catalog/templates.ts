@@ -67,6 +67,8 @@ export const TEMPLATES: Template[] = [
     build: () => base({ category: 'ring', metal: { alloyId: '18kw' }, center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1 }, setting: { typeId: 'pav' }, ring: { width: 2.2, thickness: 1.9 } }) },
   { id: 'channel', name: 'Channel Band', blurb: 'Flush-set row, round 0.9 ct', category: 'ring',
     build: () => base({ category: 'ring', metal: { alloyId: '14kw' }, center: { shapeId: 'rd', stoneTypeId: 'dia', carat: 0.9 }, setting: { typeId: 'chn' }, ring: { width: 2.6, thickness: 1.9 } }) },
+  { id: 'eternity', name: 'Eternity Band', blurb: 'Stones all around, no centre', category: 'ring',
+    build: () => base({ category: 'ring', metal: { alloyId: '18kw' }, center: { stoneTypeId: NO_STONE }, setting: { typeId: 'etr' }, ring: { width: 2.4, thickness: 1.8 } }) },
 
   // Pendants
   { id: 'solitaire-pendant', name: 'Solitaire Pendant', blurb: 'Bezel, 1 ct, 18" chain', category: 'pendant',
