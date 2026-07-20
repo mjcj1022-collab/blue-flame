@@ -92,6 +92,7 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 function TextTool() {
   const addMesh = useModeler(s => s.addMesh)
   const engraveOnPart = useModeler(s => s.engraveOnPart)
+  const wrapTextOnBand = useModeler(s => s.wrapTextOnBand)
   const selectedId = useModeler(s => s.selectedId)
   const selName = useModeler(s => s.objects.find(o => o.id === s.selectedId)?.name)
   const [text, setText] = useState('')
@@ -111,6 +112,13 @@ function TextTool() {
     flash(ok ? `${op === 'cut' ? 'Engraved' : 'Embossed'} onto ${selName}.` : 'Couldn’t apply — try a flatter face or a bigger part.')
     if (ok) setText('')
   }
+  const wrap = (op: 'emboss' | 'cut') => {
+    if (!text.trim()) { flash('Type some text first.'); return }
+    if (!selectedId) { flash('Select the band to wrap first.'); return }
+    const ok = wrapTextOnBand(selectedId, text.trim(), font, op)
+    flash(ok ? `Wrapped around ${selName}.` : 'Couldn’t wrap — select a ring/band part.')
+    if (ok) setText('')
+  }
   return (
     <>
       <div className="lib-save">
@@ -121,12 +129,18 @@ function TextTool() {
         {TEXT_FONT_NAMES.map(f => <option key={f} value={f}>{f}</option>)}
       </select>
       {selectedId && (
-        <div className="opts c2" style={{ marginTop: 8 }}>
-          <button className="opt tpl" onClick={() => onPart('cut')}>Engrave onto part</button>
-          <button className="opt tpl" onClick={() => onPart('emboss')}>Emboss onto part</button>
-        </div>
+        <>
+          <div className="opts c2" style={{ marginTop: 8 }}>
+            <button className="opt tpl" onClick={() => onPart('cut')}>Engrave onto part</button>
+            <button className="opt tpl" onClick={() => onPart('emboss')}>Emboss onto part</button>
+          </div>
+          <div className="opts c2" style={{ marginTop: 6 }}>
+            <button className="opt tpl" onClick={() => wrap('cut')}>Wrap band · engrave</button>
+            <button className="opt tpl" onClick={() => wrap('emboss')}>Wrap band · emboss</button>
+          </div>
+        </>
       )}
-      <p className="disc"><b>Add</b> drops standalone text. With a part selected, <b>Engrave/Emboss onto part</b> auto-places the text on its top face and cuts or raises it.</p>
+      <p className="disc"><b>Add</b> drops standalone text. With a part selected, <b>Engrave/Emboss onto part</b> places it on the top face; <b>Wrap band</b> curves it around a ring/band’s circumference.</p>
       {msg && <p className="disc">{msg}</p>}
     </>
   )

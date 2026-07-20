@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, strokeTubeVertices, positionTextVertices, type SketchMode } from '../lib/sculpt'
-import { textVertices } from '../lib/text3d'
+import { textVertices, curvedTextVertices } from '../lib/text3d'
+import { bakedGeometry } from '../lib/sculpt'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
@@ -111,6 +112,7 @@ interface ModelerStore {
   smoothMesh: (id: string, radius: number) => void
   fuseMetal: () => number
   engraveOnPart: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
+  wrapTextOnBand: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
@@ -185,6 +187,28 @@ export const useModeler = create<ModelerStore>((set, get) => {
     const placed = positionTextVertices(raw, target, op === 'cut' ? 'cut' : 'emboss')
     if (!placed.length) return false
     const textObj: SculptObject = { id: 'engrave', kind: 'mesh', name: 'text', vertices: placed, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: 0 }
+    record()
+    try {
+      const result = booleanOp(target, textObj, op === 'cut' ? 'subtract' : 'union')
+      if (!result.length) return false
+      set(s => ({ objects: s.objects.map(o => o.id === targetId ? { ...o, kind: 'mesh', vertices: result, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 } : o) }))
+      return true
+    } catch { return false }
+  },
+
+  /** Wrap text around a band-like part (in the XY plane) and engrave or emboss it. */
+  wrapTextOnBand: (targetId, text, font, op) => {
+    const target = get().objects.find(o => o.id === targetId)
+    if (!target) return false
+    const bg = bakedGeometry(target); bg.computeBoundingBox()
+    const b = bg.boundingBox!; bg.dispose()
+    const outerR = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2
+    const bandW = b.max.z - b.min.z
+    if (outerR < 1) return false
+    const size = Math.min(4, Math.max(0.8, bandW * 0.5))
+    const verts = curvedTextVertices(text, font, outerR, size, 1.2, true)
+    if (!verts.length) return false
+    const textObj: SculptObject = { id: 'wrap', kind: 'mesh', name: 'text', vertices: verts, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: 0 }
     record()
     try {
       const result = booleanOp(target, textObj, op === 'cut' ? 'subtract' : 'union')
