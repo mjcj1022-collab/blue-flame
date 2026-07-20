@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
-import { booleanOp, modelerToStl, sculptMetalVolume, sculptGemCarats, boundingSize, type BooleanOp } from '../lib/sculpt'
+import { booleanOp, modelerToStl, sculptEstimate, boundingSize, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
-import { ALLOYS, SHAPES, alloyById, shapeById, stoneMm } from '../catalog'
+import { ALLOYS, SHAPES, STONES, alloyById, shapeById, stoneMm } from '../catalog'
+import { MARKET } from '../lib/market'
 import { money } from '../lib/units'
 import { SketchPad } from './SketchPad'
 
 const DEG = 180 / Math.PI
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-const OZT = 31.1035
 const PRIMS: [PrimitiveKind, string][] = [['box', 'Box'], ['sphere', 'Sphere'], ['cylinder', 'Cylinder'], ['cone', 'Cone'], ['torus', 'Torus'], ['tube', 'Tube']]
 const PARTS: [JewelryKind, string][] = [['shank', 'Shank'], ['gem', 'Gem'], ['head', 'Prong head'], ['bezel', 'Bezel']]
 const PROFILES: [ShankProfile, string][] = [['round', 'Round'], ['flat', 'Flat'], ['dshape', 'D-shape'], ['knife', 'Knife'], ['comfort', 'Comfort']]
@@ -43,6 +43,10 @@ function ParamControls({ sel }: { sel: SculptObject }) {
       <div className="row" style={{ marginTop: 12 }}><label>Cut</label></div>
       <select className="lib-name" style={{ width: '100%' }} value={p.shapeId ?? 'rd'} onChange={e => updateParams(sel.id, { shapeId: e.target.value })}>
         {SHAPES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+      <div className="row" style={{ marginTop: 12 }}><label>Stone</label></div>
+      <select className="lib-name" style={{ width: '100%' }} value={p.stoneTypeId ?? 'dia'} onChange={e => updateParams(sel.id, { stoneTypeId: e.target.value })}>
+        {STONES.map(s => <option key={s.id} value={s.id}>{s.name} — {s.variety}</option>)}
       </select>
       <Slider label="Carat" value={p.carat ?? 1} min={0.1} max={6} step={0.05} unit=" ct" on={v => updateParams(sel.id, { carat: v })} />
     </>
@@ -107,12 +111,8 @@ export function ModelerPanel() {
   }
 
   const alloy = alloyById(alloyId)
-  const vol = sculptMetalVolume(objects)
-  const castG = (vol / 1000) * alloy.density
-  const metalCost = alloy.precious
-    ? ((castG * alloy.fine) / OZT) * alloy.spot * (1 + alloy.premium)
-    : castG * alloy.perGram * (1 + alloy.premium)
-  const carats = sculptGemCarats(objects)
+  const est = sculptEstimate(objects, alloyId)
+  const { vol, castG, carats, gemCount, metalCost, stoneCost, settingLabor, total } = est
 
   const doBoolean = (op: BooleanOp) => {
     const b = objects.find(o => o.id === otherId)
@@ -190,17 +190,20 @@ export function ModelerPanel() {
         )}
       </div>
 
-      <div className="panel-block metalreq">
-        <h4>Metal
+      <div className="panel-block metalreq quote">
+        <h4>Estimate
           <select className="unit" value={alloyId} onChange={e => setAlloy(e.target.value)} style={{ marginLeft: 'auto' }}>
             {ALLOYS.map(a => <option key={a.id} value={a.id}>{a.short}</option>)}
           </select>
         </h4>
         <div className="qline"><span>Volume</span><span>{Math.round(vol).toLocaleString()} mm³</span></div>
         <div className="qline hi"><span>Cast weight <i>{alloy.name}</i></span><span>{castG.toFixed(2)} g</span></div>
-        <div className="qline sub"><span>Metal value</span><span>{money(metalCost)}</span></div>
-        {carats > 0 && <div className="qline"><span>Gemstones</span><span>{carats.toFixed(2)} ct</span></div>}
-        <p className="disc">Weight is the summed volume of every metal part × alloy density — the same engine the configurator uses. Overlaps double-count until you boolean-union them.</p>
+        <div className="qline sub"><span>Metal</span><span>{money(metalCost)}</span></div>
+        {gemCount > 0 && <div className="qline sub"><span>{gemCount > 1 ? `${gemCount} stones` : 'Stone'} · {carats.toFixed(2)} ct</span><span>{money(stoneCost)}</span></div>}
+        {gemCount > 0 && <div className="qline sub"><span>Setting labor ×{gemCount}</span><span>{money(settingLabor)}</span></div>}
+        <div className="qline sub"><span>Cast, finish, polish</span><span>{money(MARKET.finishFee)}</span></div>
+        <div className="qtotal"><span className="lbl">Estimate</span><span className="amt">{money(total)}</span></div>
+        <p className="disc">Retail at ×{MARKET.margin.toFixed(2)} margin. Metal is exact from the summed part volume; stones use catalog rates. Overlaps double-count until you <b>Fuse metal</b>. Tune spot, margin and fees on the Design tab’s cost settings.</p>
       </div>
 
       <div className="panel-block">

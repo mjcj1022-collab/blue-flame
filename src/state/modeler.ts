@@ -16,6 +16,7 @@ export interface SculptParams {
   width?: number          // shank / bezel — mm
   thickness?: number      // shank — mm
   shapeId?: string        // gem — stone shape
+  stoneTypeId?: string    // gem — stone material (for pricing)
   carat?: number          // gem
   prongs?: number         // head
   stoneW?: number         // head / bezel — stone width mm
@@ -54,7 +55,7 @@ function defaults(kind: SculptKind): Pick<SculptObject, 'position' | 'size' | 'm
     case 'shank':
       return { position: [0, 0, 0], size: 6, material: 'metal', color: GOLD, params: { ringSize: 7, profile: 'round', width: 2.2, thickness: 1.8 } }
     case 'gem':
-      return { position: [0, 6, 0], size: 6, material: 'gem', color: GEM, params: { shapeId: 'rd', carat: 1 } }
+      return { position: [0, 6, 0], size: 6, material: 'gem', color: GEM, params: { shapeId: 'rd', stoneTypeId: 'dia', carat: 1 } }
     case 'head':
       return { position: [0, 6, 0], size: 6, material: 'metal', color: GOLD, params: { prongs: 4, stoneW: 6.5, height: 4 } }
     case 'bezel':

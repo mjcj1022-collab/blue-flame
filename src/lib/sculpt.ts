@@ -2,8 +2,9 @@ import * as THREE from 'three'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg'
-import { shapeById, stoneMm } from '../catalog'
+import { shapeById, stoneMm, alloyById, stoneById } from '../catalog'
 import { sizeToDiameter } from './sizing'
+import { MARKET } from './market'
 import type { SculptObject, PrimitiveKind, SculptParams, ShankProfile } from '../state/modeler'
 
 export type BooleanOp = 'union' | 'subtract' | 'intersect'
@@ -320,6 +321,41 @@ export function sculptMetalVolume(objects: SculptObject[]): number {
 
 export function sculptGemCarats(objects: SculptObject[]): number {
   return objects.filter(o => o.kind === 'gem').reduce((s, o) => s + (o.params?.carat ?? 0), 0)
+}
+
+/* ---------- sculpt price estimate ---------- */
+
+const OZT_G = 31.1035
+const SETTING_EACH = 55   // setting labor per main stone, $
+
+export interface SculptEstimate {
+  vol: number; castG: number; carats: number; gemCount: number
+  metalCost: number; stoneCost: number; settingLabor: number; finishFee: number
+  subtotal: number; total: number
+}
+
+/**
+ * A retail estimate from a sculpt, mirroring the Design tab's engine: exact
+ * metal (summed part volume × alloy, at the shared spot factor), catalog stone
+ * rates, per-stone setting labor, one cast/finish fee, all × the shop margin.
+ */
+export function sculptEstimate(objects: SculptObject[], alloyId: string): SculptEstimate {
+  const alloy = alloyById(alloyId)
+  const vol = sculptMetalVolume(objects)
+  const castG = (vol / 1000) * alloy.density
+  const metalCost = alloy.precious
+    ? ((castG * alloy.fine) / OZT_G) * (alloy.spot * MARKET.spotFactor) * (1 + alloy.premium)
+    : castG * alloy.perGram * (1 + alloy.premium)
+  const gems = objects.filter(o => o.kind === 'gem')
+  const stoneCost = gems.reduce((sum, g) => {
+    const st = stoneById(g.params?.stoneTypeId ?? 'dia')
+    return sum + st.rate * Math.pow(Math.max(g.params?.carat ?? 0, 0.001), st.exponent)
+  }, 0)
+  const carats = gems.reduce((s, g) => s + (g.params?.carat ?? 0), 0)
+  const settingLabor = gems.length * SETTING_EACH
+  const finishFee = MARKET.finishFee
+  const subtotal = metalCost + stoneCost + settingLabor + finishFee
+  return { vol, castG, carats, gemCount: gems.length, metalCost, stoneCost, settingLabor, finishFee, subtotal, total: subtotal * MARKET.margin }
 }
 
 /** Bounding-box dimensions of one object, in mm [w, h, d]. */
