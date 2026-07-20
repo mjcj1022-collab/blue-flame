@@ -8,6 +8,7 @@ import { textToPdf, bodyAfterTitle } from '../lib/pdf'
 import { ALLOYS, SHAPES, STONES, alloyById, shapeById, stoneMm } from '../catalog'
 import { MARKET } from '../lib/market'
 import { useDesign } from '../state/design'
+import { textVertices, TEXT_FONT_NAMES } from '../lib/text3d'
 import { money } from '../lib/units'
 
 const DEG = 180 / Math.PI
@@ -86,6 +87,32 @@ function ParamControls({ sel }: { sel: SculptObject }) {
     </>
   )
   return null
+}
+
+function TextTool() {
+  const addMesh = useModeler(s => s.addMesh)
+  const [text, setText] = useState('')
+  const [font, setFont] = useState('Block')
+  const [msg, setMsg] = useState('')
+  const add = () => {
+    const v = textVertices(text, font, 4, 1.2)
+    if (!v.length) { setMsg('Type some text first.'); setTimeout(() => setMsg(''), 2000); return }
+    addMesh({ kind: 'mesh', vertices: v, position: [0, 6, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: SCULPT_COLORS.metal, name: `“${text.trim()}”` })
+    setText('')
+  }
+  return (
+    <>
+      <div className="lib-save">
+        <input className="lib-name" placeholder="Type text…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
+        <button className="primary" onClick={add}>Add</button>
+      </div>
+      <select className="lib-name" style={{ width: '100%', marginTop: 8 }} value={font} onChange={e => setFont(e.target.value)}>
+        {TEXT_FONT_NAMES.map(f => <option key={f} value={f}>{f}</option>)}
+      </select>
+      <p className="disc">3D text you can move onto a part, then <b>Boolean → Subtract</b> to engrave it or <b>Union</b> to emboss it. Scale it to fit.</p>
+      {msg && <p className="disc">{msg}</p>}
+    </>
+  )
 }
 
 export function ModelerPanel() {
@@ -187,6 +214,9 @@ export function ModelerPanel() {
         </div>
         <h4 style={{ marginTop: 18 }}>Free draw</h4>
         <div className="opts"><button className="opt tpl" aria-pressed={sketching} onClick={() => setSketching(!sketching)}>{sketching ? 'Sketching… (drawing on stage)' : 'Sketch a shape…'}</button></div>
+
+        <h4 style={{ marginTop: 18 }}>Text</h4>
+        <TextTool />
 
         <h4 style={{ marginTop: 18 }}>Edit mode</h4>
         <div className="opts">
