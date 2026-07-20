@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
 import { booleanOp, modelerToStl, sculptEstimate, boundingSize, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
+import { sculptTechSheet } from '../lib/sculptDoc'
+import { textToPdf, bodyAfterTitle } from '../lib/pdf'
 import { ALLOYS, SHAPES, STONES, alloyById, shapeById, stoneMm } from '../catalog'
 import { MARKET } from '../lib/market'
+import { useDesign } from '../state/design'
 import { money } from '../lib/units'
 import { SketchPad } from './SketchPad'
 
@@ -132,10 +135,18 @@ export function ModelerPanel() {
     catch { flash('Fuse failed on this geometry.') }
   }
 
+  const shopName = useDesign.getState().shop.name
+
   const exportStl = () => {
     if (!objects.length) { flash('Nothing to export.'); return }
     const blob = new Blob([modelerToStl(objects)], { type: 'model/stl' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `blue-flame-sculpt-${Date.now()}.stl`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  const techSheet = () => {
+    if (!objects.length) { flash('Nothing to document.'); return }
+    const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    textToPdf(shopName, 'Custom Sculpt — Tech Sheet', bodyAfterTitle(sculptTechSheet(objects, alloyId, shopName)), `${slug}-sculpt-techsheet.pdf`)
   }
   const save = () => {
     if (!objects.length) { flash('Nothing to save.'); return }
@@ -336,7 +347,8 @@ export function ModelerPanel() {
       </div>
 
       <div className="panel-block quote">
-        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={fuse} disabled={metalCount < 2}>Fuse metal</button><button className="ghost" onClick={clear}>Clear all</button></div>
+        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={techSheet}>Tech sheet</button><button className="ghost" onClick={fuse} disabled={metalCount < 2}>Fuse metal</button></div>
+        <div className="qact" style={{ marginTop: 8 }}><button className="ghost" onClick={clear}>Clear all</button></div>
         {metalCount >= 2 && <p className="disc">Fuse unions all {metalCount} metal parts into one watertight solid for printing (gems untouched).</p>}
         {msg && <p className="disc">{msg}</p>}
       </div>
