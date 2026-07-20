@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls, Environment, Lightformer, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { useDesign } from '../state/design'
 import { alloyById, shapeById, stoneMm } from '../catalog'
@@ -39,15 +39,42 @@ function hudChips(spec: ReturnType<typeof useDesign.getState>['spec']) {
   return chips
 }
 
-interface Lighting { label: string; bg: string; envI: number; amb: number; key: [string, number]; fill: [string, number] }
+interface Lighting {
+  label: string; bg: string; envI: number; amb: number
+  key: [string, number]; fill: [string, number]
+  // procedural studio-rig tint + key/fill intensity for the environment map
+  rig: { key: string; keyI: number; fill: number; sparkle: string }
+}
 const LIGHTING: Record<string, Lighting> = {
-  studio:   { label: 'Studio',   bg: '#0E1113', envI: 0.90, amb: 0.30, key: ['#ffffff', 1.6], fill: ['#BFD4FF', 0.70] },
-  daylight: { label: 'Daylight', bg: '#151a1d', envI: 1.10, amb: 0.50, key: ['#FFF7E8', 2.1], fill: ['#CFE0FF', 0.95] },
-  case:     { label: 'Case',     bg: '#050607', envI: 0.70, amb: 0.12, key: ['#FFFFFF', 2.7], fill: ['#FFFFFF', 0.22] },
-  candle:   { label: 'Candle',   bg: '#140f0a', envI: 0.60, amb: 0.18, key: ['#FF9C45', 1.6], fill: ['#FFB86A', 0.40] },
-  office:   { label: 'Office',   bg: '#10151a', envI: 0.90, amb: 0.55, key: ['#EAF0FF', 1.2], fill: ['#EAF0FF', 0.85] }
+  studio:   { label: 'Studio',   bg: '#0E1113', envI: 1.00, amb: 0.28, key: ['#ffffff', 1.5], fill: ['#BFD4FF', 0.65], rig: { key: '#ffffff', keyI: 1.6, fill: 0.6, sparkle: '#ffffff' } },
+  daylight: { label: 'Daylight', bg: '#151a1d', envI: 1.15, amb: 0.45, key: ['#FFF7E8', 2.0], fill: ['#CFE0FF', 0.90], rig: { key: '#eaf2ff', keyI: 2.2, fill: 0.9, sparkle: '#ffffff' } },
+  case:     { label: 'Case',     bg: '#050607', envI: 0.85, amb: 0.10, key: ['#FFFFFF', 2.6], fill: ['#FFFFFF', 0.20], rig: { key: '#ffffff', keyI: 3.0, fill: 0.12, sparkle: '#ffffff' } },
+  candle:   { label: 'Candle',   bg: '#140f0a', envI: 0.80, amb: 0.16, key: ['#FF9C45', 1.6], fill: ['#FFB86A', 0.40], rig: { key: '#ffb271', keyI: 1.8, fill: 0.35, sparkle: '#ffd9a8' } },
+  office:   { label: 'Office',   bg: '#10151a', envI: 0.95, amb: 0.50, key: ['#EAF0FF', 1.2], fill: ['#EAF0FF', 0.80], rig: { key: '#f0f4ff', keyI: 1.3, fill: 0.8, sparkle: '#ffffff' } }
 }
 const SCENES = ['studio', 'daylight', 'case', 'candle', 'office']
+
+/**
+ * A procedural studio softbox baked into the environment map — a broad top key,
+ * side rims, a front fill and a bright sparkle streak for stone brilliance.
+ * No CDN HDRI, so reflections work offline and stay tunable per scenario.
+ */
+function StudioEnv({ rig, intensity }: { rig: Lighting['rig']; intensity: number }) {
+  return (
+    <Environment resolution={256} environmentIntensity={intensity}>
+      {/* six-face soft surround so transmissive stones refract light, not void */}
+      <Lightformer form="rect" intensity={rig.keyI} color={rig.key} scale={[46, 46, 1]} position={[0, 25, 4]} rotation={[-Math.PI / 2, 0, 0]} />
+      <Lightformer form="rect" intensity={rig.fill * 1.4} color="#ffffff" scale={[46, 46, 1]} position={[0, -25, 4]} rotation={[Math.PI / 2, 0, 0]} />
+      <Lightformer form="rect" intensity={rig.keyI * 0.9} color={rig.key} scale={[22, 42, 1]} position={[24, 4, 4]} rotation={[0, -Math.PI / 2, 0]} />
+      <Lightformer form="rect" intensity={rig.fill * 1.5} color="#ffffff" scale={[22, 42, 1]} position={[-24, 4, 4]} rotation={[0, Math.PI / 2, 0]} />
+      <Lightformer form="rect" intensity={rig.fill * 1.3} color="#ffffff" scale={[42, 26, 1]} position={[0, 4, 28]} rotation={[0, 0, 0]} />
+      <Lightformer form="rect" intensity={rig.fill * 1.2} color={rig.key} scale={[42, 26, 1]} position={[0, 4, -28]} rotation={[0, Math.PI, 0]} />
+      {/* bright sparkle streaks catch the crown facets */}
+      <Lightformer form="ring" intensity={rig.keyI * 1.7} color={rig.sparkle} scale={5} position={[9, 15, 18]} />
+      <Lightformer form="ring" intensity={rig.keyI * 1.2} color={rig.sparkle} scale={3.5} position={[-11, 9, 16]} />
+    </Environment>
+  )
+}
 
 const SKIN_TONES = ['#E7C1A0', '#C89778', '#A56A43', '#6E4326']
 
@@ -85,7 +112,7 @@ export function Scene() {
       >
         <color attach="background" args={[L.bg]} />
         <Suspense fallback={null}>
-          <Environment preset="studio" environmentIntensity={L.envI} />
+          <StudioEnv rig={L.rig} intensity={L.envI} />
         </Suspense>
         <ambientLight intensity={L.amb} />
         <directionalLight position={[6, 12, 9]} intensity={L.key[1]} color={L.key[0]} />
@@ -95,6 +122,7 @@ export function Scene() {
             <Piece spec={spec} />
           </group>
         </Turntable>
+        <ContactShadows position={[0, -13, 0]} opacity={0.5} scale={70} blur={2.6} far={26} resolution={512} color="#000000" />
         <OrbitControls
           makeDefault
           enablePan={false}
