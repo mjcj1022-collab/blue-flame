@@ -112,7 +112,7 @@ interface ModelerStore {
   smoothMesh: (id: string, radius: number) => void
   fuseMetal: () => number
   engraveOnPart: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
-  wrapTextOnBand: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
+  wrapTextOnBand: (targetId: string, text: string, font: string, op: SurfaceOp, angleDeg?: number, inside?: boolean) => boolean
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
@@ -196,18 +196,26 @@ export const useModeler = create<ModelerStore>((set, get) => {
     } catch { return false }
   },
 
-  /** Wrap text around a band-like part (in the XY plane) and engrave or emboss it. */
-  wrapTextOnBand: (targetId, text, font, op) => {
+  /** Wrap text around a band-like part (in the XY plane) and engrave or emboss it.
+   *  angleDeg centres the run around the band; inside places it on the inner face. */
+  wrapTextOnBand: (targetId, text, font, op, angleDeg = 90, inside = false) => {
     const target = get().objects.find(o => o.id === targetId)
     if (!target) return false
     const bg = bakedGeometry(target); bg.computeBoundingBox()
-    const b = bg.boundingBox!; bg.dispose()
-    const outerR = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2
+    const b = bg.boundingBox!
     const bandW = b.max.z - b.min.z
-    if (outerR < 1) return false
+    const cx = (b.max.x + b.min.x) / 2, cy = (b.max.y + b.min.y) / 2, cz = (b.max.z + b.min.z) / 2
+    // exact inner/outer radius of the ring, measured from its own centre in XY
+    const pos = bg.getAttribute('position')
+    let outerR = 0, innerR = Infinity
+    for (let i = 0; i < pos.count; i++) { const r = Math.hypot(pos.getX(i) - cx, pos.getY(i) - cy); if (r > outerR) outerR = r; if (r < innerR) innerR = r }
+    bg.dispose()
+    const radius = inside ? innerR : outerR
+    if (radius < 1) return false
     const size = Math.min(4, Math.max(0.8, bandW * 0.5))
-    const verts = curvedTextVertices(text, font, outerR, size, 1.2, true)
+    const verts = curvedTextVertices(text, font, radius, size, 1.2, !inside, angleDeg * Math.PI / 180)
     if (!verts.length) return false
+    for (let i = 0; i < verts.length; i += 3) { verts[i] += cx; verts[i + 1] += cy; verts[i + 2] += cz }   // to the band centre
     const textObj: SculptObject = { id: 'wrap', kind: 'mesh', name: 'text', vertices: verts, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: 0 }
     record()
     try {

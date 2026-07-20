@@ -97,6 +97,8 @@ function TextTool() {
   const selName = useModeler(s => s.objects.find(o => o.id === s.selectedId)?.name)
   const [text, setText] = useState('')
   const [font, setFont] = useState('Block')
+  const [angle, setAngle] = useState(90)
+  const [inside, setInside] = useState(false)
   const [msg, setMsg] = useState('')
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
   const add = () => {
@@ -115,7 +117,7 @@ function TextTool() {
   const wrap = (op: 'emboss' | 'cut') => {
     if (!text.trim()) { flash('Type some text first.'); return }
     if (!selectedId) { flash('Select the band to wrap first.'); return }
-    const ok = wrapTextOnBand(selectedId, text.trim(), font, op)
+    const ok = wrapTextOnBand(selectedId, text.trim(), font, op, angle, inside)
     flash(ok ? `Wrapped around ${selName}.` : 'Couldn’t wrap — select a ring/band part.')
     if (ok) setText('')
   }
@@ -134,6 +136,11 @@ function TextTool() {
             <button className="opt tpl" onClick={() => onPart('cut')}>Engrave onto part</button>
             <button className="opt tpl" onClick={() => onPart('emboss')}>Emboss onto part</button>
           </div>
+          <Slider label="Wrap position" value={angle} min={0} max={360} step={5} unit="°" on={setAngle} />
+          <label className="filter-row" style={{ marginTop: 6 }}>
+            <input type="checkbox" checked={inside} onChange={e => setInside(e.target.checked)} />
+            Inside face<small>engrave inside the band</small>
+          </label>
           <div className="opts c2" style={{ marginTop: 6 }}>
             <button className="opt tpl" onClick={() => wrap('cut')}>Wrap band · engrave</button>
             <button className="opt tpl" onClick={() => wrap('emboss')}>Wrap band · emboss</button>

@@ -25,6 +25,18 @@ describe('curvedTextVertices', () => {
   it('is empty for blank text', () => {
     expect(curvedTextVertices('  ', 'Block', 10)).toEqual([])
   })
+
+  it('the centre angle moves the run around the circle', () => {
+    const meanAngle = (v: number[]) => {
+      let sx = 0, sy = 0
+      for (let i = 0; i < v.length; i += 3) { sx += v[i]; sy += v[i + 1] }
+      return Math.atan2(sy, sx)
+    }
+    const top = curvedTextVertices('AB', 'Block', 12, 2, 1.2, true, Math.PI / 2)   // +Y
+    const right = curvedTextVertices('AB', 'Block', 12, 2, 1.2, true, 0)            // +X
+    expect(meanAngle(top)).toBeCloseTo(Math.PI / 2, 0)   // ~1.57, tolerance 0.5
+    expect(meanAngle(right)).toBeCloseTo(0, 0)
+  })
 })
 
 describe('wrapTextOnBand', () => {
@@ -46,5 +58,13 @@ describe('wrapTextOnBand', () => {
     s().wrapTextOnBand(id, 'AB', 'Block', 'cut')
     s().undo()
     expect(s().objects.find(x => x.id === id)!.kind).toBe('torus')
+  })
+
+  it('engraves on the inside face at a chosen angle', () => {
+    s().add('torus')
+    const id = s().selectedId!
+    const ok = s().wrapTextOnBand(id, 'AB', 'Block', 'cut', 180, true)
+    expect(ok).toBe(true)
+    expect(s().objects.find(x => x.id === id)!.kind).toBe('mesh')
   })
 })

@@ -43,7 +43,7 @@ export function textVertices(text: string, fontName: string, size = 4, depth = 1
  * (Z), tangent to the circle, and straddles the surface. Union to emboss around
  * the band, subtract to engrave into it.
  */
-export function curvedTextVertices(text: string, fontName: string, radius: number, size = 2, depth = 1.2, faceOut = true): number[] {
+export function curvedTextVertices(text: string, fontName: string, radius: number, size = 2, depth = 1.2, faceOut = true, centerAngle = Math.PI / 2): number[] {
   const t = text.trim()
   if (!t || radius <= 0.1) return []
   const font = TEXT_FONTS[fontName] ?? TEXT_FONTS.Block
@@ -63,7 +63,7 @@ export function curvedTextVertices(text: string, fontName: string, radius: numbe
   }
 
   const span = total / radius            // radians subtended
-  let ang = Math.PI / 2 - span / 2       // centre the run at the top of the ring
+  let ang = centerAngle - span / 2       // centre the run at the chosen angle
   const up = new THREE.Vector3(0, 0, 1)
   const soup: number[] = []
   for (const { geo, adv } of items) {
