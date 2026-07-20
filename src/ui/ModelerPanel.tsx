@@ -88,7 +88,7 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, editMode, falloff, symmetry, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, symmetry, surfaceOp, brush, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, setSurfaceOp, setBrush, select, setMode, setAlloy, clear, load } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
@@ -188,9 +188,10 @@ export function ModelerPanel() {
         <div className="opts"><button className="opt tpl" aria-pressed={sketching} onClick={() => setSketching(!sketching)}>{sketching ? 'Sketching… (drawing on stage)' : 'Sketch a shape…'}</button></div>
 
         <h4 style={{ marginTop: 18 }}>Edit mode</h4>
-        <div className="opts c2">
+        <div className="opts">
           <button className="opt" aria-pressed={editMode === 'object'} onClick={() => setEditMode('object')}>Object</button>
           <button className="opt" aria-pressed={editMode === 'vertex'} onClick={() => setEditMode('vertex')}>Vertices</button>
+          <button className="opt" aria-pressed={editMode === 'surface'} onClick={() => setEditMode('surface')}>Surface</button>
         </div>
         {editMode === 'object' ? (
           <>
@@ -206,14 +207,23 @@ export function ModelerPanel() {
               Snap to grid<small>0.5 mm · 15°</small>
             </label>
           </>
-        ) : (
+        ) : editMode === 'vertex' ? (
           <>
             <Slider label="Region" value={falloff} min={0.4} max={14} step={0.2} unit=" mm" on={setFalloff} />
             <label className="filter-row" style={{ marginTop: 12 }}>
               <input type="checkbox" checked={symmetry} onChange={toggleSymmetry} />
               Mirror-X symmetry<small>sculpt both sides at once</small>
             </label>
-            <p className="disc">Select an <b>editable mesh</b>, click a point on it, then drag the gizmo. Nearby vertices follow within the region radius — small pulls one point, large sculpts a soft bulge. Convert a part with <b>Make editable</b> below.</p>
+            <p className="disc">Select an <b>editable mesh</b>, click a point on it, then drag the gizmo. Nearby vertices follow within the region radius. Convert a part with <b>Make editable</b> below.</p>
+          </>
+        ) : (
+          <>
+            <div className="opts c2" style={{ marginTop: 8 }}>
+              <button className="opt" aria-pressed={surfaceOp === 'emboss'} onClick={() => setSurfaceOp('emboss')}>Emboss</button>
+              <button className="opt" aria-pressed={surfaceOp === 'cut'} onClick={() => setSurfaceOp('cut')}>Cut</button>
+            </div>
+            <Slider label="Brush" value={brush} min={0.15} max={3} step={0.05} unit=" mm" on={setBrush} />
+            <p className="disc">Select a part, then <b>drag on its surface</b> to {surfaceOp === 'cut' ? 'cut an engraved groove into it' : 'raise an embossed line on it'}. Each stroke becomes a tube that’s {surfaceOp === 'cut' ? 'subtracted from' : 'fused onto'} the part — undo reverts it.</p>
           </>
         )}
       </div>

@@ -4,6 +4,7 @@ import { TransformControls, Edges } from '@react-three/drei'
 import { useModeler, type SculptObject } from '../state/modeler'
 import { renderGeometry } from '../lib/sculpt'
 import { VertexEditor } from './VertexEditor'
+import { SurfaceDraw } from './SurfaceDraw'
 
 function useSculptMaterial(o: SculptObject) {
   return useMemo(() => {
@@ -28,6 +29,8 @@ export function SculptMesh({ o }: { o: SculptObject }) {
 
   // Vertex-sculpt mode takes over rendering for the selected editable mesh.
   if (selected && editMode === 'vertex' && o.kind === 'mesh') return <VertexEditor o={o} />
+  // Surface-draw mode: emboss/cut a stroke on the selected part (any kind).
+  if (selected && editMode === 'surface') return <SurfaceDraw o={o} />
 
   const mesh = (
     <mesh

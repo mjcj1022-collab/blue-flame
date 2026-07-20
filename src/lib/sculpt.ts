@@ -195,6 +195,44 @@ export function sketchToVertices(points: [number, number][], mode: SketchMode, d
   return arr
 }
 
+/** A closed, capped tube swept along a surface stroke (world-space points).
+ *  Union it onto a part to emboss a raised line, or subtract it to cut a groove.
+ *  Built by hand (with end caps) so it's a watertight solid the CSG can boolean;
+ *  an open TubeGeometry produces no result. */
+export function strokeTubeVertices(points: [number, number, number][], radius: number): number[] {
+  if (points.length < 2) return []
+  const r = Math.max(0.05, radius)
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p[0], p[1], p[2])))
+  const N = Math.max(3, Math.ceil(curve.getLength() / (r * 0.7)))   // tubular segments
+  const R = 8                                                       // radial segments
+  const frames = curve.computeFrenetFrames(N, false)
+  const centers: THREE.Vector3[] = []
+  const rings: THREE.Vector3[][] = []
+  for (let i = 0; i <= N; i++) {
+    const c = curve.getPoint(i / N); centers.push(c)
+    const nrm = frames.normals[i], bin = frames.binormals[i]
+    const ring: THREE.Vector3[] = []
+    for (let j = 0; j < R; j++) {
+      const a = (j / R) * Math.PI * 2
+      ring.push(c.clone().addScaledVector(nrm, r * Math.cos(a)).addScaledVector(bin, r * Math.sin(a)))
+    }
+    rings.push(ring)
+  }
+  const soup: number[] = []
+  const P = (v: THREE.Vector3) => soup.push(v.x, v.y, v.z)
+  const tri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => { P(a); P(b); P(c) }
+  for (let i = 0; i < N; i++) {
+    const a = rings[i], b = rings[i + 1]
+    for (let j = 0; j < R; j++) { const j1 = (j + 1) % R; tri(a[j], b[j], b[j1]); tri(a[j], b[j1], a[j1]) }
+  }
+  for (let j = 0; j < R; j++) {   // end caps
+    const j1 = (j + 1) % R
+    tri(centers[0], rings[0][j1], rings[0][j])
+    tri(centers[N], rings[N][j], rings[N][j1])
+  }
+  return soup
+}
+
 /** Midpoint-subdivide a triangle soup: each triangle becomes four, so vertex
  *  edits land on a finer mesh. Input/output are flat [x,y,z,...] positions. */
 export function subdivideSoup(verts: number[]): number[] {
@@ -274,6 +312,7 @@ export function booleanOp(a: SculptObject, b: SculptObject, op: BooleanOp): numb
   const brushB = new Brush(bakedGeometry(b)); brushB.updateMatrixWorld()
   const evaluator = new Evaluator()
   evaluator.useGroups = false
+  evaluator.attributes = ['position', 'normal']   // ignore uv etc. so brushes with different attribute sets can combine
   const result = evaluator.evaluate(brushA, brushB, OP[op])
   const pos = result.geometry.getAttribute('position')
   return Array.from(pos.array as Float32Array)

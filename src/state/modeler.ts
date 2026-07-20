@@ -1,12 +1,13 @@
 import { create } from 'zustand'
-import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, type SketchMode } from '../lib/sculpt'
+import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, strokeTubeVertices, type SketchMode } from '../lib/sculpt'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
 export type SculptKind = PrimitiveKind | JewelryKind
 export type SculptMaterial = 'metal' | 'gem'
 export type TransformMode = 'translate' | 'rotate' | 'scale'
-export type EditMode = 'object' | 'vertex'
+export type EditMode = 'object' | 'vertex' | 'surface'
+export type SurfaceOp = 'emboss' | 'cut'
 export type ShankProfile = 'round' | 'flat' | 'dshape' | 'knife' | 'comfort'
 
 /** A free-drawn profile that stays editable — geometry is regenerated from it. */
@@ -92,12 +93,17 @@ interface ModelerStore {
   alloyId: string
   snap: boolean
   symmetry: boolean
+  surfaceOp: SurfaceOp
+  brush: number
   past: SculptObject[][]
   future: SculptObject[][]
   undo: () => void
   redo: () => void
   setEditMode: (m: EditMode) => void
   setFalloff: (r: number) => void
+  setSurfaceOp: (op: SurfaceOp) => void
+  setBrush: (r: number) => void
+  applySurfaceStroke: (targetId: string, points: [number, number, number][], op: SurfaceOp, radius: number) => void
   toggleSymmetry: () => void
   bakeToMesh: (id: string) => void
   subdivideMesh: (id: string) => void
@@ -144,6 +150,8 @@ export const useModeler = create<ModelerStore>((set, get) => {
   alloyId: '14ky',
   snap: false,
   symmetry: false,
+  surfaceOp: 'emboss',
+  brush: 0.6,
   sketching: false,
   sketchEditId: null,
   past: [],
@@ -162,7 +170,27 @@ export const useModeler = create<ModelerStore>((set, get) => {
 
   setEditMode: editMode => set({ editMode }),
   setFalloff: falloff => set({ falloff: Math.max(0.2, falloff) }),
+  setSurfaceOp: surfaceOp => set({ surfaceOp }),
+  setBrush: brush => set({ brush: Math.max(0.15, brush) }),
   toggleSymmetry: () => set(s => ({ symmetry: !s.symmetry })),
+
+  /** Emboss (union) or cut (subtract) a tube swept along a surface stroke. */
+  applySurfaceStroke: (targetId, points, op, radius) => {
+    const target = get().objects.find(o => o.id === targetId)
+    if (!target || points.length < 2) return
+    const tubeVerts = strokeTubeVertices(points, radius)
+    if (!tubeVerts.length) return
+    const tube: SculptObject = { id: 'stroke', kind: 'mesh', name: 'stroke', vertices: tubeVerts, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: 0 }
+    record()
+    try {
+      const result = booleanOp(target, tube, op === 'cut' ? 'subtract' : 'union')
+      if (result.length) set(s => ({
+        objects: s.objects.map(o => o.id === targetId
+          ? { ...o, kind: 'mesh', vertices: result, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 }
+          : o)
+      }))
+    } catch { /* boolean failed on this geometry */ }
+  },
 
   /** Flatten any part/primitive into an editable triangle mesh at identity
    *  transform, so its vertices can be pushed and pulled directly. */
