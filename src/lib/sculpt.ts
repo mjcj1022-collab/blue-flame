@@ -233,6 +233,36 @@ export function strokeTubeVertices(points: [number, number, number][], radius: n
   return soup
 }
 
+/** Lay a run of 3D text flat on the top face of a part (world space), scaled to
+ *  fit and straddling the surface for a subtract (engrave) or sitting proud for a
+ *  union (emboss). `textVerts` are centred XY letters extruded along Z. */
+export function positionTextVertices(textVerts: number[], target: SculptObject, op: 'cut' | 'emboss', depth = 1.2): number[] {
+  if (!textVerts.length) return []
+  const tg = new THREE.BufferGeometry()
+  tg.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from(textVerts), 3))
+  tg.computeBoundingBox()
+  const tb = tg.boundingBox!
+  const tw = Math.max(tb.max.x - tb.min.x, 0.01)
+
+  const bg = bakedGeometry(target)
+  bg.computeBoundingBox()
+  const pb = bg.boundingBox!
+  bg.dispose()
+  const cx = (pb.max.x + pb.min.x) / 2, cz = (pb.max.z + pb.min.z) / 2, topY = pb.max.y
+  const s = Math.min(12, Math.max(0.1, ((pb.max.x - pb.min.x) * 0.7) / tw))   // fit ~70% of the part width
+
+  // scale letters (not depth), lay flat (extrusion → down into the part), place on top
+  const m = new THREE.Matrix4().compose(
+    new THREE.Vector3(cx, op === 'cut' ? topY : topY + depth / 2, cz),
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
+    new THREE.Vector3(s, s, 1)
+  )
+  tg.applyMatrix4(m)
+  const arr = soupPositions(tg)
+  tg.dispose()
+  return arr
+}
+
 /** Midpoint-subdivide a triangle soup: each triangle becomes four, so vertex
  *  edits land on a finer mesh. Input/output are flat [x,y,z,...] positions. */
 export function subdivideSoup(verts: number[]): number[] {

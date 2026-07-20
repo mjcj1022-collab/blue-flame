@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, strokeTubeVertices, type SketchMode } from '../lib/sculpt'
+import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, strokeTubeVertices, positionTextVertices, type SketchMode } from '../lib/sculpt'
+import { textVertices } from '../lib/text3d'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
@@ -109,6 +110,7 @@ interface ModelerStore {
   subdivideMesh: (id: string) => void
   smoothMesh: (id: string, radius: number) => void
   fuseMetal: () => number
+  engraveOnPart: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
   toggleSnap: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
@@ -173,6 +175,24 @@ export const useModeler = create<ModelerStore>((set, get) => {
   setSurfaceOp: surfaceOp => set({ surfaceOp }),
   setBrush: brush => set({ brush: Math.max(0.15, brush) }),
   toggleSymmetry: () => set(s => ({ symmetry: !s.symmetry })),
+
+  /** Auto-place 3D text on a part's top face and engrave (subtract) or emboss
+   *  (union) it. Returns whether it applied. */
+  engraveOnPart: (targetId, text, font, op) => {
+    const target = get().objects.find(o => o.id === targetId)
+    if (!target) return false
+    const raw = textVertices(text, font, 10, 1.2)
+    const placed = positionTextVertices(raw, target, op === 'cut' ? 'cut' : 'emboss')
+    if (!placed.length) return false
+    const textObj: SculptObject = { id: 'engrave', kind: 'mesh', name: 'text', vertices: placed, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: 0 }
+    record()
+    try {
+      const result = booleanOp(target, textObj, op === 'cut' ? 'subtract' : 'union')
+      if (!result.length) return false
+      set(s => ({ objects: s.objects.map(o => o.id === targetId ? { ...o, kind: 'mesh', vertices: result, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0 } : o) }))
+      return true
+    } catch { return false }
+  },
 
   /** Emboss (union) or cut (subtract) a tube swept along a surface stroke. */
   applySurfaceStroke: (targetId, points, op, radius) => {

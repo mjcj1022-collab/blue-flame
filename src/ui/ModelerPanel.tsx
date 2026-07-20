@@ -91,14 +91,25 @@ function ParamControls({ sel }: { sel: SculptObject }) {
 
 function TextTool() {
   const addMesh = useModeler(s => s.addMesh)
+  const engraveOnPart = useModeler(s => s.engraveOnPart)
+  const selectedId = useModeler(s => s.selectedId)
+  const selName = useModeler(s => s.objects.find(o => o.id === s.selectedId)?.name)
   const [text, setText] = useState('')
   const [font, setFont] = useState('Block')
   const [msg, setMsg] = useState('')
+  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
   const add = () => {
     const v = textVertices(text, font, 4, 1.2)
-    if (!v.length) { setMsg('Type some text first.'); setTimeout(() => setMsg(''), 2000); return }
+    if (!v.length) { flash('Type some text first.'); return }
     addMesh({ kind: 'mesh', vertices: v, position: [0, 6, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: SCULPT_COLORS.metal, name: `“${text.trim()}”` })
     setText('')
+  }
+  const onPart = (op: 'emboss' | 'cut') => {
+    if (!text.trim()) { flash('Type some text first.'); return }
+    if (!selectedId) { flash('Select the part to engrave first.'); return }
+    const ok = engraveOnPart(selectedId, text.trim(), font, op)
+    flash(ok ? `${op === 'cut' ? 'Engraved' : 'Embossed'} onto ${selName}.` : 'Couldn’t apply — try a flatter face or a bigger part.')
+    if (ok) setText('')
   }
   return (
     <>
@@ -109,7 +120,13 @@ function TextTool() {
       <select className="lib-name" style={{ width: '100%', marginTop: 8 }} value={font} onChange={e => setFont(e.target.value)}>
         {TEXT_FONT_NAMES.map(f => <option key={f} value={f}>{f}</option>)}
       </select>
-      <p className="disc">3D text you can move onto a part, then <b>Boolean → Subtract</b> to engrave it or <b>Union</b> to emboss it. Scale it to fit.</p>
+      {selectedId && (
+        <div className="opts c2" style={{ marginTop: 8 }}>
+          <button className="opt tpl" onClick={() => onPart('cut')}>Engrave onto part</button>
+          <button className="opt tpl" onClick={() => onPart('emboss')}>Emboss onto part</button>
+        </div>
+      )}
+      <p className="disc"><b>Add</b> drops standalone text. With a part selected, <b>Engrave/Emboss onto part</b> auto-places the text on its top face and cuts or raises it.</p>
       {msg && <p className="disc">{msg}</p>}
     </>
   )
