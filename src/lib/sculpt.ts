@@ -4,6 +4,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg'
 import { shapeById, stoneMm, alloyById, stoneById } from '../catalog'
 import { sizeToDiameter } from './sizing'
+import { brilliantGeometry } from './gem'
 import { MARKET } from './market'
 import type { SculptObject, PrimitiveKind, SculptParams, ShankProfile } from '../state/modeler'
 
@@ -72,19 +73,10 @@ export function shankGeometry(p: SculptParams): THREE.BufferGeometry {
 function gemGeometry(p: SculptParams): THREE.BufferGeometry {
   const shape = shapeById(p.shapeId ?? 'rd')
   const width = stoneMm(shape, Math.max(p.carat ?? 1, 0.02)).width
-  const r = width / 2, crownH = width * 0.16, pavH = width * 0.43, girdleH = width * 0.03, tableR = r * 0.55
-  const seg = shape.segments
-
-  const pav = new THREE.ConeGeometry(r, pavH, seg)
-  pav.rotateX(Math.PI); pav.translate(0, -(pavH / 2 + girdleH / 2), 0)
-  const girdle = new THREE.CylinderGeometry(r, r, girdleH, seg)
-  const crown = new THREE.CylinderGeometry(tableR, r, crownH, seg)
-  crown.translate(0, crownH / 2 + girdleH / 2, 0)
-
-  const merged = mergeGeometries([pav, girdle, crown], false) ?? girdle
-  merged.scale(1, 1, shape.lwRatio)
-  merged.computeVertexNormals()
-  return merged
+  const geo = brilliantGeometry(width, shape.segments)
+  geo.scale(1, 1, shape.lwRatio)
+  geo.computeVertexNormals()
+  return geo
 }
 
 function headGeometry(p: SculptParams): THREE.BufferGeometry {

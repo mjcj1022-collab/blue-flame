@@ -10,7 +10,7 @@ function useSculptMaterial(o: SculptObject) {
     if (o.material === 'gem') {
       return new THREE.MeshPhysicalMaterial({
         color: o.color, metalness: 0, roughness: 0.02, transmission: 0.9,
-        thickness: 4, ior: 2.0, clearcoat: 1, transparent: true
+        thickness: 4, ior: 2.0, clearcoat: 1, flatShading: true, transparent: true
       })
     }
     return new THREE.MeshStandardMaterial({ color: o.color, metalness: 1, roughness: 0.22, envMapIntensity: 1.3 })
