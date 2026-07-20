@@ -215,7 +215,7 @@ export function ModelerPanel() {
               <input type="checkbox" checked={symmetry} onChange={toggleSymmetry} />
               Mirror-X symmetry<small>sculpt both sides at once</small>
             </label>
-            <p className="disc">On a <b>sketch</b>, drag its profile nodes to reshape it live. On an <b>editable mesh</b>, click a point and drag the gizmo — nearby vertices follow within the region radius. Convert a part with <b>Make editable</b> below.</p>
+            <p className="disc">On a <b>sketch</b>: drag a node to reshape, click the surface to add a node, right-click a node to delete. On an <b>editable mesh</b>: click a point and drag the gizmo — nearby vertices follow within the region radius. Convert a part with <b>Make editable</b>.</p>
           </>
         ) : (
           <>

@@ -38,14 +38,42 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
     setObjectSketch(o.id, { ...sk, points: np })
   }
 
+  // profile coordinate of a world-space point on the surface
+  const toProfile = (world: THREE.Vector3): [number, number] => {
+    const l = world.clone().applyMatrix4(inv)
+    return sk.mode === 'revolve' ? [Math.hypot(l.x, l.z), l.y] : [l.x, l.y]
+  }
+
+  // click the surface to insert a node at the nearest profile segment
+  const addNode = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    const np = toProfile(e.point)
+    let at = sk.points.length, best = Infinity
+    for (let i = 0; i < sk.points.length - 1; i++) {
+      const mx = (sk.points[i][0] + sk.points[i + 1][0]) / 2, my = (sk.points[i][1] + sk.points[i + 1][1]) / 2
+      const d = (mx - np[0]) ** 2 + (my - np[1]) ** 2
+      if (d < best) { best = d; at = i + 1 }
+    }
+    const out = [...sk.points]; out.splice(at, 0, np)
+    setObjectSketch(o.id, { ...sk, points: out })
+  }
+
+  // right-click a node to delete it
+  const delNode = (i: number) => (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (sk.points.length <= 2) return
+    setObjectSketch(o.id, { ...sk, points: sk.points.filter((_, j) => j !== i) })
+    if (pick === i) setPick(null); else if (pick != null && pick > i) setPick(pick - 1)
+  }
+
   return (
     <>
-      <mesh geometry={geom} material={material} position={o.position} rotation={o.rotation} scale={o.scale} castShadow>
+      <mesh geometry={geom} material={material} position={o.position} rotation={o.rotation} scale={o.scale} onClick={addNode} castShadow>
         <Edges scale={1.003} threshold={20} color="#3d454a" />
       </mesh>
 
       {sk.points.map((p, i) => i === pick ? null : (
-        <mesh key={i} position={handleWorld(p)} onClick={grab(i)} renderOrder={10}>
+        <mesh key={i} position={handleWorld(p)} onClick={grab(i)} onContextMenu={delNode(i)} renderOrder={10}>
           <sphereGeometry args={[0.7, 14, 12]} />
           <meshBasicMaterial color="#9BB4C6" toneMapped={false} depthTest={false} depthWrite={false} />
         </mesh>
@@ -53,7 +81,7 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
 
       {pick != null && sk.points[pick] && (
         <TransformControls key={pickKey} mode="translate" size={0.6} showZ={false} onObjectChange={drag} onMouseUp={drag}>
-          <mesh ref={handleRef} position={handleWorld(sk.points[pick])} renderOrder={11}>
+          <mesh ref={handleRef} position={handleWorld(sk.points[pick])} onContextMenu={delNode(pick)} renderOrder={11}>
             <sphereGeometry args={[0.8, 14, 12]} />
             <meshBasicMaterial color="#C6A265" toneMapped={false} depthTest={false} depthWrite={false} />
           </mesh>
