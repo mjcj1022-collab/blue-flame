@@ -89,11 +89,21 @@ export function VertexEditor({ o }: { o: SculptObject }) {
     baseRef.current = (pos.array as Float32Array).slice()
   }
 
+  // Show the actual vertices as dots on lighter meshes so the grab points are
+  // visible; skipped on dense meshes (where it would just be gold fuzz). The
+  // overlay never raycasts, so clicks still land on the mesh surface.
+  const showPoints = geom.getAttribute('position').count <= 15000
+
   return (
     <>
       <mesh geometry={geom} material={material} onClick={grab} castShadow>
         <Edges scale={1.002} threshold={20} color="#3d454a" />
       </mesh>
+      {showPoints && (
+        <points geometry={geom} raycast={() => null}>
+          <pointsMaterial size={0.6} sizeAttenuation color="#9BB4C6" transparent opacity={0.7} />
+        </points>
+      )}
 
       {pick && (
         <TransformControls key={pickKey} mode="translate" size={0.7} onObjectChange={drag} onMouseUp={commit}>

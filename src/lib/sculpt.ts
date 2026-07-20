@@ -59,8 +59,10 @@ export function shankGeometry(p: SculptParams): THREE.BufferGeometry {
     pts.push(new THREE.Vector3(Math.cos(a) * R, Math.sin(a) * R, 0))
   }
   const path = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0)
+  // 96 steps keeps the band visually smooth while roughly halving the triangle
+  // count vs. 200 — so a baked band stays responsive to vertex sculpting.
   const geo = new THREE.ExtrudeGeometry(profileShape(profile, width, thickness), {
-    steps: 200, bevelEnabled: false, extrudePath: path
+    steps: 96, curveSegments: 8, bevelEnabled: false, extrudePath: path
   })
   geo.computeVertexNormals()
   return geo
