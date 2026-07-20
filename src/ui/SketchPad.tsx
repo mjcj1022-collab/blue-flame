@@ -57,6 +57,10 @@ export function SketchDock() {
   const svgRef = useRef<SVGSVGElement>(null)
   const objId = useRef<string | null>(null)
   const isNew = useRef(true)
+  // The mm profile this pad last wrote to the store. If the store's profile ever
+  // differs from this, the change came from elsewhere (a 3D node drag, a panel
+  // slider) and we mirror it back into the pad — keeping 2D and 3D in lockstep.
+  const lastPushed = useRef<[number, number][] | null>(null)
 
   useEffect(() => {
     if (editId && objectById?.params?.sketch) {
@@ -72,9 +76,24 @@ export function SketchDock() {
 
   const pushLive = (p: Pt[], m: SketchMode, d: number, seg: number, a: number) => {
     const def = { points: toMm(p, m), mode: m, depth: d, segments: seg, arc: a }
+    lastPushed.current = def.points
     if (objId.current) setObjectSketch(objId.current, def)
     else if (p.length >= 2) objId.current = addSketch(def)
   }
+
+  // Mirror external edits (3D node drag, panel sliders) back into the pad. Skip
+  // while the pad itself is mid-edit, and skip our own pushes (same points ref).
+  const storeSketch = objectById?.params?.sketch
+  useEffect(() => {
+    if (!storeSketch) return
+    if (drawing.current || dragIdx.current != null) return
+    if (storeSketch.points === lastPushed.current) return
+    lastPushed.current = storeSketch.points
+    setMode(storeSketch.mode); setDepth(storeSketch.depth)
+    setSegments(storeSketch.segments); setArc(storeSketch.arc ?? 360)
+    setPts(toPx(storeSketch.points, storeSketch.mode))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeSketch])
   const push = (p: Pt[]) => pushLive(p, mode, depth, segments, arc)
 
   const toSvg = (e: React.PointerEvent): Pt => {
