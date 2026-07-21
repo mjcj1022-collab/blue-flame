@@ -106,7 +106,7 @@ export function VertexEditor({ o }: { o: SculptObject }) {
       )}
 
       {pick && (
-        <TransformControls key={pickKey} mode="translate" size={0.7} onObjectChange={drag} onMouseUp={commit}>
+        <TransformControls key={pickKey} mode="translate" size={1.1} onObjectChange={drag} onMouseUp={commit}>
           <mesh ref={handleRef} position={pick}>
             <sphereGeometry args={[0.55, 16, 12]} />
             <meshBasicMaterial color="#C6A265" toneMapped={false} />
