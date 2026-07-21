@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import * as THREE from 'three'
-import { TransformControls, Edges, Html } from '@react-three/drei'
+import { TransformControls, Edges, Html, Line } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useModeler, type SculptObject } from '../state/modeler'
-import { renderGeometry, objectMatrix, editSketchPoint } from '../lib/sculpt'
+import { renderGeometry, objectMatrix, editSketchPoint, profileDistance } from '../lib/sculpt'
 
 /**
  * Drag a sketch's profile control points directly in the 3D render. Each node
@@ -20,6 +20,7 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const snap = useModeler(s => s.snap)
   const editMode = useModeler(s => s.editMode)
   const mode = useModeler(s => s.mode)
+  const measuring = useModeler(s => s.measuring)
   const update = useModeler(s => s.update)
   const select = useModeler(s => s.select)
   const sk = o.params!.sketch!
@@ -38,9 +39,20 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const [pickKey, setPickKey] = useState(0)
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const [draft, setDraft] = useState<[string, string]>(['', ''])
+  const [mPicks, setMPicks] = useState<number[]>([])   // up to 2 nodes for the measure tool
   const handleRef = useRef<THREE.Mesh>(null)
 
+  // Reset the measurement when measuring turns off, the object changes, or a node vanishes.
+  useEffect(() => { setMPicks(p => p.filter(i => i < sk.points.length)) }, [sk.points.length])
+  useEffect(() => { if (!measuring) setMPicks([]) }, [measuring])
+  useEffect(() => { setMPicks([]); setPick(null); setEditIdx(null) }, [o.id])
+
   const grab = (i: number) => (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); setPick(i); setPickKey(k => k + 1) }
+  // Measure mode: click nodes to pick the pair (toggle off; keep the last two).
+  const measurePick = (i: number) => (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    setMPicks(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].slice(-2))
+  }
 
   // The two axis labels for a profile point, by mode.
   const axes: [string, string] = sk.mode === 'revolve' ? ['r', 'h'] : ['x', 'y']
@@ -187,7 +199,8 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
       <Edges scale={1.003} threshold={20} color="#3d454a" />
     </mesh>
   )
-  const showObjGizmo = editMode === 'object' && pick == null
+  const showObjGizmo = editMode === 'object' && pick == null && !measuring
+  const measurePair = measuring && mPicks.length === 2 && mPicks.every(i => sk.points[i])
 
   return (
     <>
@@ -195,17 +208,17 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
         ? <TransformControls mode={mode} size={0.8} translationSnap={snap ? GRID_MM : null} onMouseUp={commitObject}>{baseMesh}</TransformControls>
         : baseMesh}
 
-      {sk.points.map((p, i) => i === pick ? null : (
+      {sk.points.map((p, i) => (!measuring && i === pick) ? null : (
         <group key={i}>
-          <mesh position={handleWorld(p)} onClick={grab(i)} onContextMenu={delNode(i)} renderOrder={10}>
-            <sphereGeometry args={[0.7, 14, 12]} />
-            <meshBasicMaterial color="#9BB4C6" toneMapped={false} depthTest={false} depthWrite={false} />
+          <mesh position={handleWorld(p)} onClick={measuring ? measurePick(i) : grab(i)} onContextMenu={delNode(i)} renderOrder={10}>
+            <sphereGeometry args={[measuring && mPicks.includes(i) ? 0.85 : 0.7, 14, 12]} />
+            <meshBasicMaterial color={measuring && mPicks.includes(i) ? '#5FD0E0' : '#9BB4C6'} toneMapped={false} depthTest={false} depthWrite={false} />
           </mesh>
           {nodeLabel(i, p, false)}
         </group>
       ))}
 
-      {pick != null && sk.points[pick] && (
+      {!measuring && pick != null && sk.points[pick] && (
         <>
           <TransformControls key={pickKey} mode="translate" size={0.6} showZ={false} translationSnap={snap ? GRID_MM : null} onObjectChange={drag} onMouseUp={drag}>
             <mesh ref={handleRef} position={handleWorld(sk.points[pick])} onContextMenu={delNode(pick)} renderOrder={11}>
@@ -216,6 +229,24 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
           {nodeLabel(pick, sk.points[pick], true)}
         </>
       )}
+
+      {measurePair && (() => {
+        const a = handleWorld(sk.points[mPicks[0]]), b = handleWorld(sk.points[mPicks[1]])
+        const mid = a.clone().lerp(b, 0.5)
+        const dist = profileDistance(sk.points[mPicks[0]], sk.points[mPicks[1]])
+        return (
+          <>
+            <Line points={[a, b]} color="#5FD0E0" lineWidth={2} dashed dashSize={0.6} gapSize={0.4} depthTest={false} renderOrder={12} />
+            <Html position={mid} center zIndexRange={[25, 0]} style={{ pointerEvents: 'none' }}>
+              <div style={{
+                whiteSpace: 'nowrap', font: '700 11px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums',
+                padding: '2px 7px', borderRadius: 4, color: '#0C1114', background: '#5FD0E0',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
+              }}>{dist.toFixed(2)} mm</div>
+            </Html>
+          </>
+        )
+      })()}
     </>
   )
 }

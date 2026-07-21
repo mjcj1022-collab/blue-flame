@@ -95,6 +95,7 @@ interface ModelerStore {
   falloff: number
   alloyId: string
   snap: boolean
+  measuring: boolean
   symmetry: boolean
   surfaceOp: SurfaceOp
   brush: number
@@ -115,6 +116,7 @@ interface ModelerStore {
   engraveOnPart: (targetId: string, text: string, font: string, op: SurfaceOp) => boolean
   wrapTextOnBand: (targetId: string, text: string, font: string, op: SurfaceOp, angleDeg?: number, inside?: boolean) => boolean
   toggleSnap: () => void
+  toggleMeasuring: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
   sketching: boolean
@@ -158,6 +160,7 @@ export const useModeler = create<ModelerStore>((set, get) => {
   falloff: 2.5,
   alloyId: '14ky',
   snap: false,
+  measuring: false,
   symmetry: false,
   surfaceOp: 'emboss',
   brush: 0.6,
@@ -286,6 +289,7 @@ export const useModeler = create<ModelerStore>((set, get) => {
   },
 
   toggleSnap: () => set(s => ({ snap: !s.snap })),
+  toggleMeasuring: () => set(s => ({ measuring: !s.measuring })),
 
   mirror: id => {
     const src = get().objects.find(o => o.id === id)

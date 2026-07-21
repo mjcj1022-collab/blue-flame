@@ -186,6 +186,11 @@ export function editSketchPoint(
     j !== i ? pt : mode === 'revolve' ? [Math.max(0, a), b] : [a, b])
 }
 
+/** Straight-line distance (mm) between two profile points, in design space. */
+export function profileDistance(a: [number, number], b: [number, number]): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1])
+}
+
 export interface SketchSummary {
   mode: SketchMode
   nodes: number

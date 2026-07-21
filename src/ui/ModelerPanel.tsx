@@ -40,7 +40,7 @@ function Slider({ label, value, min, max, step, unit, on }: { label: string; val
 }
 
 function ParamControls({ sel }: { sel: SculptObject }) {
-  const { updateParams, setObjectSketch, setSketching, setEditMode, select, saveSketchPreset } = useModeler()
+  const { updateParams, setObjectSketch, setSketching, setEditMode, select, saveSketchPreset, measuring, toggleMeasuring } = useModeler()
   const p = sel.params ?? {}
   if (sel.kind === 'sketch' && p.sketch) {
     const sk = p.sketch
@@ -58,8 +58,9 @@ function ParamControls({ sel }: { sel: SculptObject }) {
           <button className="opt tpl" onClick={() => setSketching(true, sel.id)}>Edit profile ✎</button>
           <button className="opt tpl" onClick={() => { select(sel.id); setEditMode('vertex') }}>Drag 3D nodes</button>
         </div>
-        <div className="opts" style={{ marginTop: 8 }}>
-          <button className="opt" onClick={() => { const n = window.prompt('Save this profile as a preset — name:'); if (n && n.trim()) saveSketchPreset(n, sk) }}>Save this profile as preset ★</button>
+        <div className="opts c2" style={{ marginTop: 8 }}>
+          <button className="opt" aria-pressed={measuring} onClick={() => { select(sel.id); toggleMeasuring() }}>{measuring ? 'Measuring — click 2 nodes' : 'Measure ⟷'}</button>
+          <button className="opt" onClick={() => { const n = window.prompt('Save this profile as a preset — name:'); if (n && n.trim()) saveSketchPreset(n, sk) }}>Save as preset ★</button>
         </div>
         {sk.mode === 'extrude'
           ? <Slider label="Depth" value={sk.depth} min={0.6} max={12} step={0.2} unit=" mm" on={v => setObjectSketch(sel.id, { ...sk, depth: v })} />

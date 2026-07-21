@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume, boundingSize, editSketchPoint, sketchSummary } from '../lib/sculpt'
+import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume, boundingSize, editSketchPoint, sketchSummary, profileDistance } from '../lib/sculpt'
 import type { SculptObject, PrimitiveKind } from '../state/modeler'
 
 const obj = (over: Partial<SculptObject> & { kind: SculptObject['kind'] }): SculptObject => ({
@@ -41,6 +41,14 @@ describe('editSketchPoint (type-in a node dimension)', () => {
   it('ignores non-finite input and out-of-range index (returns same array)', () => {
     expect(editSketchPoint(pts, 1, 'revolve', NaN, 6)).toBe(pts)
     expect(editSketchPoint(pts, 9, 'revolve', 1, 2)).toBe(pts)
+  })
+})
+
+describe('profileDistance (measure tool)', () => {
+  it('is the Euclidean mm distance between two profile points', () => {
+    expect(profileDistance([0, 0], [3, 4])).toBe(5)
+    expect(profileDistance([2, 1], [2, 1])).toBe(0)
+    expect(profileDistance([1, 1], [1, 6])).toBe(5)
   })
 })
 
