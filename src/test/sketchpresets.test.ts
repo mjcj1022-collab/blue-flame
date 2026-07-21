@@ -13,7 +13,7 @@ if (typeof globalThis.localStorage === 'undefined') {
   } as Storage
 }
 
-import { BUILTIN_PRESETS, allPresets, addUserPreset, removeUserPreset, cloneSketch } from '../lib/sketchPresets'
+import { BUILTIN_PRESETS, allPresets, addUserPreset, removeUserPreset, cloneSketch, profileThumb } from '../lib/sketchPresets'
 import { useModeler } from '../state/modeler'
 import type { SketchDef } from '../state/modeler'
 
@@ -62,6 +62,33 @@ describe('sketch presets library', () => {
     const c = cloneSketch(def)
     c.points[0][0] = 42
     expect(def.points[0][0]).toBe(0)
+  })
+})
+
+describe('profileThumb', () => {
+  const coords = (d: string) => d.match(/-?\d+(\.\d+)?/g)!.map(Number)
+
+  it('builds a closed path that fits inside the box', () => {
+    const { d, w, h } = profileThumb(def, 38, 26)
+    expect(d.startsWith('M')).toBe(true)
+    expect(d.endsWith('Z')).toBe(true)
+    const nums = coords(d)
+    for (let i = 0; i < nums.length; i += 2) {
+      expect(nums[i]).toBeGreaterThanOrEqual(0); expect(nums[i]).toBeLessThanOrEqual(w)
+      expect(nums[i + 1]).toBeGreaterThanOrEqual(0); expect(nums[i + 1]).toBeLessThanOrEqual(h)
+    }
+  })
+  it('revolve mirrors the profile (double the vertices of the outline)', () => {
+    const revPts = def.points.length
+    const { d } = profileThumb(def, 38, 26)
+    const verts = (d.match(/[ML]/g) || []).length
+    expect(verts).toBe(revPts * 2)
+  })
+  it('every built-in yields a non-empty path', () => {
+    for (const p of BUILTIN_PRESETS) expect(profileThumb(p.sketch).d.length).toBeGreaterThan(0)
+  })
+  it('is empty for a degenerate profile', () => {
+    expect(profileThumb({ ...def, points: [[0, 0]] }).d).toBe('')
   })
 })
 

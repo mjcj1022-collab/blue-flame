@@ -25,6 +25,28 @@ export const BUILTIN_PRESETS: SketchPreset[] = [
   { id: 'b-bar', name: 'Bar (extrude)', builtin: true, sketch: ext([[-6, 1.5], [6, 1.5], [6, -1.5], [-6, -1.5]], 4) },
 ]
 
+/**
+ * A tiny SVG silhouette of a profile, fit to a w×h box. Revolve profiles are
+ * mirrored across the spin axis so the icon reads as the turned cross-section;
+ * extrude profiles are drawn as their outline. Returns an empty path if <2 pts.
+ */
+export function profileThumb(sketch: SketchDef, w = 38, h = 26, pad = 3): { d: string; w: number; h: number } {
+  const pts = sketch.points
+  if (pts.length < 2) return { d: '', w, h }
+  const sil: [number, number][] = sketch.mode === 'revolve'
+    ? [...pts, ...pts.slice().reverse().map(([x, y]): [number, number] => [-x, y])]
+    : pts
+  const xs = sil.map(p => p[0]), ys = sil.map(p => p[1])
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys)
+  const sw = (maxX - minX) || 1, sh = (maxY - minY) || 1
+  const s = Math.min((w - 2 * pad) / sw, (h - 2 * pad) / sh)
+  const ox = (w - sw * s) / 2, oy = (h - sh * s) / 2
+  const tx = (x: number) => ox + (x - minX) * s
+  const ty = (y: number) => h - (oy + (y - minY) * s)   // flip Y (profile up → SVG down)
+  const d = sil.map((p, i) => `${i ? 'L' : 'M'}${tx(p[0]).toFixed(1)} ${ty(p[1]).toFixed(1)}`).join(' ') + ' Z'
+  return { d, w, h }
+}
+
 function readUser(): SketchPreset[] {
   try {
     const raw = localStorage.getItem(KEY)

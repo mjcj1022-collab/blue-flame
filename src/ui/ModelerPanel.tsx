@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
+import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile, type SketchDef } from '../state/modeler'
+import { profileThumb } from '../lib/sketchPresets'
 import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, sketchSummary, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
 import { analyzeMesh, type DfmReport } from '../lib/dfm'
@@ -18,6 +19,16 @@ const PRIMS: [PrimitiveKind, string][] = [['box', 'Box'], ['sphere', 'Sphere'], 
 const PARTS: [JewelryKind, string][] = [['shank', 'Shank'], ['gem', 'Gem'], ['head', 'Prong head'], ['bezel', 'Bezel']]
 const PROFILES: [ShankProfile, string][] = [['round', 'Round'], ['flat', 'Flat'], ['dshape', 'D-shape'], ['knife', 'Knife'], ['comfort', 'Comfort']]
 const OPS: [BooleanOp, string][] = [['union', 'Union'], ['subtract', 'Subtract'], ['intersect', 'Intersect']]
+
+/** Tiny profile silhouette shown on a preset chip. */
+function PresetThumb({ sketch }: { sketch: SketchDef }) {
+  const { d, w, h } = profileThumb(sketch)
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" style={{ display: 'block', margin: '0 auto 5px' }}>
+      <path d={d} fill="rgba(198,162,101,0.16)" stroke="#C6A265" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 function Slider({ label, value, min, max, step, unit, on }: { label: string; value: number; min: number; max: number; step: number; unit: string; on: (v: number) => void }) {
   return (
@@ -268,6 +279,7 @@ export function ModelerPanel() {
           {sketchPresets.map(preset => (
             <button key={preset.id} className="opt" title={preset.builtin ? 'Built-in profile' : 'Your saved profile'}
               onClick={() => { const id = applySketchPreset(preset); select(id) }}>
+              <PresetThumb sketch={preset.sketch} />
               {preset.name}
               {!preset.builtin && (
                 <span role="button" aria-label={`Delete ${preset.name}`} title="Delete preset"
