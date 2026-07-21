@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { bakedVertices, subdivideSoup, smoothSoup, booleanOp, strokeTubeVertices, positionTextVertices, type SketchMode } from '../lib/sculpt'
 import { textVertices, curvedTextVertices } from '../lib/text3d'
 import { bakedGeometry } from '../lib/sculpt'
+import { allPresets, addUserPreset, removeUserPreset, cloneSketch, type SketchPreset } from '../lib/sketchPresets'
 
 export type PrimitiveKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'tube'
 export type JewelryKind = 'shank' | 'gem' | 'head' | 'bezel'
@@ -121,6 +122,10 @@ interface ModelerStore {
   setSketching: (on: boolean, editId?: string | null) => void
   addSketch: (sketch: SketchDef) => string
   setObjectSketch: (id: string, sketch: SketchDef) => void
+  sketchPresets: SketchPreset[]
+  saveSketchPreset: (name: string, sketch: SketchDef) => void
+  applySketchPreset: (preset: SketchPreset) => string
+  deleteSketchPreset: (id: string) => void
   add: (kind: SculptKind) => void
   addPart: (kind: SculptKind, params: Partial<SculptParams>, name?: string) => void
   addObjects: (objs: Array<Omit<SculptObject, 'id' | 'name'> & { name?: string }>) => void
@@ -327,6 +332,12 @@ export const useModeler = create<ModelerStore>((set, get) => {
 
   /** Live-update a sketch object's profile (no history entry — used while drawing). */
   setObjectSketch: (id, sketch) => set(s => ({ objects: s.objects.map(o => o.id === id ? { ...o, params: { ...o.params, sketch } } : o) })),
+
+  /** Saved profile presets: built-ins + the user's own (persisted to localStorage). */
+  sketchPresets: allPresets(),
+  saveSketchPreset: (name, sketch) => { addUserPreset(name, cloneSketch(sketch)); set({ sketchPresets: allPresets() }) },
+  applySketchPreset: preset => get().addSketch(cloneSketch(preset.sketch)),
+  deleteSketchPreset: id => { removeUserPreset(id); set({ sketchPresets: allPresets() }) },
 
   /** Add several parts at once (e.g. a full ring assembly) in one history step. */
   addObjects: objs => {

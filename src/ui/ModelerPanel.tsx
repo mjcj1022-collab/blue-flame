@@ -29,7 +29,7 @@ function Slider({ label, value, min, max, step, unit, on }: { label: string; val
 }
 
 function ParamControls({ sel }: { sel: SculptObject }) {
-  const { updateParams, setObjectSketch, setSketching, setEditMode, select } = useModeler()
+  const { updateParams, setObjectSketch, setSketching, setEditMode, select, saveSketchPreset } = useModeler()
   const p = sel.params ?? {}
   if (sel.kind === 'sketch' && p.sketch) {
     const sk = p.sketch
@@ -46,6 +46,9 @@ function ParamControls({ sel }: { sel: SculptObject }) {
         <div className="opts c2" style={{ marginTop: 8 }}>
           <button className="opt tpl" onClick={() => setSketching(true, sel.id)}>Edit profile ✎</button>
           <button className="opt tpl" onClick={() => { select(sel.id); setEditMode('vertex') }}>Drag 3D nodes</button>
+        </div>
+        <div className="opts" style={{ marginTop: 8 }}>
+          <button className="opt" onClick={() => { const n = window.prompt('Save this profile as a preset — name:'); if (n && n.trim()) saveSketchPreset(n, sk) }}>Save this profile as preset ★</button>
         </div>
         {sk.mode === 'extrude'
           ? <Slider label="Depth" value={sk.depth} min={0.6} max={12} step={0.2} unit=" mm" on={v => setObjectSketch(sel.id, { ...sk, depth: v })} />
@@ -162,7 +165,7 @@ function TextTool() {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, editMode, falloff, symmetry, surfaceOp, brush, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, setSurfaceOp, setBrush, select, setMode, setAlloy, clear, load } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, symmetry, surfaceOp, brush, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, bakeToMesh, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, setSurfaceOp, setBrush, select, setMode, setAlloy, clear, load, sketchPresets, applySketchPreset, deleteSketchPreset } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
@@ -260,6 +263,20 @@ export function ModelerPanel() {
         </div>
         <h4 style={{ marginTop: 18 }}>Free draw</h4>
         <div className="opts"><button className="opt tpl" aria-pressed={sketching} onClick={() => setSketching(!sketching)}>{sketching ? 'Sketching… (drawing on stage)' : 'Sketch a shape…'}</button></div>
+        <div className="row" style={{ marginTop: 10 }}><label>Profile presets</label></div>
+        <div className="opts c2">
+          {sketchPresets.map(preset => (
+            <button key={preset.id} className="opt" title={preset.builtin ? 'Built-in profile' : 'Your saved profile'}
+              onClick={() => { const id = applySketchPreset(preset); select(id) }}>
+              {preset.name}
+              {!preset.builtin && (
+                <span role="button" aria-label={`Delete ${preset.name}`} title="Delete preset"
+                  onClick={e => { e.stopPropagation(); if (window.confirm(`Delete preset “${preset.name}”?`)) deleteSketchPreset(preset.id) }}
+                  style={{ marginLeft: 6, opacity: 0.55, cursor: 'pointer' }}>✕</span>
+              )}
+            </button>
+          ))}
+        </div>
 
         <h4 style={{ marginTop: 18 }}>Text</h4>
         <TextTool />
