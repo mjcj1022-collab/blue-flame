@@ -11,8 +11,13 @@ import { renderGeometry, objectMatrix, editSketchPoint } from '../lib/sculpt'
  * front face for an extrude); moving it rewrites that profile point, so the
  * whole parametric shape regenerates live — no baking to a mesh.
  */
+/** mm grid the node handles snap to when Snap is on (matches object-move snap). */
+const GRID_MM = 0.5
+const snapMm = (v: number) => Math.round(v / GRID_MM) * GRID_MM
+
 export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const setObjectSketch = useModeler(s => s.setObjectSketch)
+  const snap = useModeler(s => s.snap)
   const sk = o.params!.sketch!
 
   const geom = useMemo(() => renderGeometry(o), [o.id, JSON.stringify(o.params)])
@@ -100,8 +105,10 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const drag = () => {
     if (pick == null || !handleRef.current) return
     const local = handleRef.current.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv)
+    let [x, y] = [local.x, local.y]
+    if (snap) { x = snapMm(x); y = snapMm(y) }   // land on the 0.5 mm grid
     const np = sk.points.map((pt, i): [number, number] =>
-      i !== pick ? pt : sk.mode === 'revolve' ? [Math.max(0, local.x), local.y] : [local.x, local.y])
+      i !== pick ? pt : sk.mode === 'revolve' ? [Math.max(0, x), y] : [x, y])
     setObjectSketch(o.id, { ...sk, points: np })
   }
 
@@ -115,6 +122,7 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const addNode = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
     const np = toProfile(e.point)
+    if (snap) { np[0] = Math.max(0, snapMm(np[0])); np[1] = snapMm(np[1]) }
     let at = sk.points.length, best = Infinity
     for (let i = 0; i < sk.points.length - 1; i++) {
       const mx = (sk.points[i][0] + sk.points[i + 1][0]) / 2, my = (sk.points[i][1] + sk.points[i + 1][1]) / 2
@@ -151,7 +159,7 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
 
       {pick != null && sk.points[pick] && (
         <>
-          <TransformControls key={pickKey} mode="translate" size={0.6} showZ={false} onObjectChange={drag} onMouseUp={drag}>
+          <TransformControls key={pickKey} mode="translate" size={0.6} showZ={false} translationSnap={snap ? GRID_MM : null} onObjectChange={drag} onMouseUp={drag}>
             <mesh ref={handleRef} position={handleWorld(sk.points[pick])} onContextMenu={delNode(pick)} renderOrder={11}>
               <sphereGeometry args={[0.8, 14, 12]} />
               <meshBasicMaterial color="#C6A265" toneMapped={false} depthTest={false} depthWrite={false} />
