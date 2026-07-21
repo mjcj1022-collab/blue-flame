@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react'
 import * as THREE from 'three'
 import { TransformControls, Edges, Html } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
@@ -56,6 +56,29 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
     if (np !== sk.points) setObjectSketch(o.id, { ...sk, points: np })
     setEditIdx(null)
   }
+
+  // Arrow-key nudge the selected node by one grid step (Shift = coarse). Left/Right
+  // move radius|x, Up/Down move height|y. Ignored while typing in a field.
+  useEffect(() => {
+    if (pick == null || editIdx != null) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = document.activeElement
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      const dir: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1],
+      }
+      const d = dir[e.key]; const p = sk.points[pick]
+      if (!d || !p) return
+      e.preventDefault()
+      const step = (e.shiftKey ? 5 : 1) * GRID_MM
+      let a = p[0] + d[0] * step, b = p[1] + d[1] * step
+      if (snap) { a = snapMm(a); b = snapMm(b) }
+      const np = editSketchPoint(sk.points, pick, sk.mode, a, b)
+      if (np !== sk.points) setObjectSketch(o.id, { ...sk, points: np })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pick, editIdx, snap, sk, o.id, setObjectSketch])
 
   const pillStyle: CSSProperties = {
     transform: 'translateY(-14px)', whiteSpace: 'nowrap',
