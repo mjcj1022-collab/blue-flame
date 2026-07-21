@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume, boundingSize, editSketchPoint } from '../lib/sculpt'
+import { primitiveGeometry, booleanOp, modelerToStl, renderGeometry, bakedGeometry, meshVolume, sculptMetalVolume, boundingSize, editSketchPoint, sketchSummary } from '../lib/sculpt'
 import type { SculptObject, PrimitiveKind } from '../state/modeler'
 
 const obj = (over: Partial<SculptObject> & { kind: SculptObject['kind'] }): SculptObject => ({
@@ -41,6 +41,31 @@ describe('editSketchPoint (type-in a node dimension)', () => {
   it('ignores non-finite input and out-of-range index (returns same array)', () => {
     expect(editSketchPoint(pts, 1, 'revolve', NaN, 6)).toBe(pts)
     expect(editSketchPoint(pts, 9, 'revolve', 1, 2)).toBe(pts)
+  })
+})
+
+describe('sketchSummary (whole-profile envelope)', () => {
+  const pts: [number, number][] = [[2, 0], [11, 4], [5, 20]]
+
+  it('revolve: diameter is 2×max radius, height is Δy', () => {
+    const s = sketchSummary(pts, 'revolve')
+    expect(s.diameter).toBe(22)      // 2 × 11
+    expect(s.height).toBe(20)        // 20 − 0
+    expect(s.nodes).toBe(3)
+    expect(s.width).toBeUndefined()
+  })
+  it('extrude: width is Δx, height is Δy, depth carried through', () => {
+    const s = sketchSummary(pts, 'extrude', 3.5)
+    expect(s.width).toBe(9)          // 11 − 2
+    expect(s.height).toBe(20)
+    expect(s.depth).toBe(3.5)
+    expect(s.diameter).toBeUndefined()
+  })
+  it('empty profile is all zero, no NaN', () => {
+    const s = sketchSummary([], 'revolve')
+    expect(s.nodes).toBe(0)
+    expect(s.diameter).toBe(0)
+    expect(s.height).toBe(0)
   })
 })
 

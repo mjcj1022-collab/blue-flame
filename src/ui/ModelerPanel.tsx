@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile } from '../state/modeler'
-import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, type BooleanOp } from '../lib/sculpt'
+import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, sketchSummary, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
 import { analyzeMesh, type DfmReport } from '../lib/dfm'
 import { sculptTechSheet } from '../lib/sculptDoc'
@@ -33,9 +33,17 @@ function ParamControls({ sel }: { sel: SculptObject }) {
   const p = sel.params ?? {}
   if (sel.kind === 'sketch' && p.sketch) {
     const sk = p.sketch
+    const sum = sketchSummary(sk.points, sk.mode, sk.depth)
+    const f = (v: number) => v.toFixed(1)
+    const envelope = sum.mode === 'revolve'
+      ? `⌀ ${f(sum.diameter!)} × ${f(sum.height)} mm`
+      : `${f(sum.width!)} × ${f(sum.height)} × ${f(sum.depth!)} mm`
     return (
       <>
-        <div className="opts c2" style={{ marginTop: 12 }}>
+        <div className="disc" style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between' }}>
+          <span>{envelope}</span><span style={{ opacity: 0.6 }}>{sum.nodes} nodes</span>
+        </div>
+        <div className="opts c2" style={{ marginTop: 8 }}>
           <button className="opt tpl" onClick={() => setSketching(true, sel.id)}>Edit profile ✎</button>
           <button className="opt tpl" onClick={() => { select(sel.id); setEditMode('vertex') }}>Drag 3D nodes</button>
         </div>

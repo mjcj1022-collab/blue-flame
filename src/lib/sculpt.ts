@@ -186,6 +186,30 @@ export function editSketchPoint(
     j !== i ? pt : mode === 'revolve' ? [Math.max(0, a), b] : [a, b])
 }
 
+export interface SketchSummary {
+  mode: SketchMode
+  nodes: number
+  /** revolve only: overall outer diameter (2 × max radius), mm */
+  diameter?: number
+  /** extrude only: outline width (Δx), mm */
+  width?: number
+  /** overall profile height (Δy), mm */
+  height: number
+  /** extrude only: extrusion depth, mm */
+  depth?: number
+}
+
+/** Overall envelope of a sketch profile: max diameter/width × height (× depth). */
+export function sketchSummary(points: [number, number][], mode: SketchMode, depth = 3): SketchSummary {
+  const n = points.length
+  if (!n) return { mode, nodes: 0, height: 0, ...(mode === 'revolve' ? { diameter: 0 } : { width: 0, depth }) }
+  const xs = points.map(p => p[0]), ys = points.map(p => p[1])
+  const height = Math.max(...ys) - Math.min(...ys)
+  return mode === 'revolve'
+    ? { mode, nodes: n, diameter: Math.max(0, ...xs) * 2, height }
+    : { mode, nodes: n, width: Math.max(...xs) - Math.min(...xs), height, depth }
+}
+
 /**
  * Turn a hand-drawn 2D profile (points in mm) into mesh vertices.
  * - revolve: spin the profile around the Y axis (x = radius ≥ 0, y = height).
