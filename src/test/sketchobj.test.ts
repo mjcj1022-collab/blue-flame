@@ -25,6 +25,20 @@ describe('parametric sketch objects', () => {
     expect(s().past.length).toBe(before)   // live edits are not individual undo steps
   })
 
+  it('switches an existing sketch between revolve and extrude, each rendering geometry', () => {
+    const id = s().addSketch({ points: profile, mode: 'revolve', depth: 3, segments: 32 })
+    const o1 = s().objects.find(x => x.id === id)!
+    expect(renderGeometry(o1).getAttribute('position').count).toBeGreaterThan(0)
+    // flip to extrude — same points, reinterpreted
+    s().setObjectSketch(id, { ...o1.params!.sketch!, mode: 'extrude' })
+    const o2 = s().objects.find(x => x.id === id)!
+    expect(o2.params?.sketch?.mode).toBe('extrude')
+    expect(renderGeometry(o2).getAttribute('position').count).toBeGreaterThan(0)
+    // and back to revolve
+    s().setObjectSketch(id, { ...o2.params!.sketch!, mode: 'revolve' })
+    expect(s().objects.find(x => x.id === id)!.params?.sketch?.mode).toBe('revolve')
+  })
+
   it('a sketch bakes to an editable mesh', () => {
     const id = s().addSketch({ points: profile, mode: 'extrude', depth: 4, segments: 24 })
     s().bakeToMesh(id)

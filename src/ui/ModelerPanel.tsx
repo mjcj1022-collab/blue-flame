@@ -73,6 +73,11 @@ function ParamControls({ sel }: { sel: SculptObject }) {
           <button className="opt" aria-pressed={measuring} onClick={() => { select(sel.id); toggleMeasuring() }}>{measuring ? 'Measuring — click 2 nodes' : 'Measure ⟷'}</button>
           <button className="opt" onClick={() => { const n = window.prompt('Save this profile as a preset — name:'); if (n && n.trim()) saveSketchPreset(n, sk) }}>Save as preset ★</button>
         </div>
+        <div className="row" style={{ marginTop: 12 }}><label>Build</label></div>
+        <div className="opts c2">
+          <button className="opt" aria-pressed={sk.mode === 'revolve'} onClick={() => setObjectSketch(sel.id, { ...sk, mode: 'revolve' })}>Revolve</button>
+          <button className="opt" aria-pressed={sk.mode === 'extrude'} onClick={() => setObjectSketch(sel.id, { ...sk, mode: 'extrude' })}>Extrude</button>
+        </div>
         {sk.mode === 'extrude'
           ? <Slider label="Depth" value={sk.depth} min={0.6} max={12} step={0.2} unit=" mm" on={v => setObjectSketch(sel.id, { ...sk, depth: v })} />
           : <>
