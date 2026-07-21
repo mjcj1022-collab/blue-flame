@@ -28,9 +28,10 @@ export function SculptMesh({ o }: { o: SculptObject }) {
   const material = useSculptMaterial(o)
   const selected = selectedId === o.id
 
-  // Sketch nodes show whenever you're editing that sketch: live while drawing, or
-  // in Vertices mode. So the live 3D render always carries draggable vertices.
-  if (o.kind === 'sketch' && o.params?.sketch && ((selected && editMode === 'vertex') || (sketching && o.id === sketchEditId))) return <SketchNodeEditor o={o} />
+  // A sketch always shows its draggable nodes when selected (Object or Vertices
+  // mode) or while it's being drawn — a sketch is its nodes. In Object mode the
+  // whole-shape move gizmo is still available (until you grab a node).
+  if (o.kind === 'sketch' && o.params?.sketch && ((selected && editMode !== 'surface') || (sketching && o.id === sketchEditId))) return <SketchNodeEditor o={o} />
   if (selected && editMode === 'vertex' && o.kind === 'mesh') return <VertexEditor o={o} />
   // Surface-draw mode: emboss/cut a stroke on the selected part (any kind).
   if (selected && editMode === 'surface') return <SurfaceDraw o={o} />

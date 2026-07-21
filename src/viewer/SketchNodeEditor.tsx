@@ -18,7 +18,12 @@ const snapMm = (v: number) => Math.round(v / GRID_MM) * GRID_MM
 export function SketchNodeEditor({ o }: { o: SculptObject }) {
   const setObjectSketch = useModeler(s => s.setObjectSketch)
   const snap = useModeler(s => s.snap)
+  const editMode = useModeler(s => s.editMode)
+  const mode = useModeler(s => s.mode)
+  const update = useModeler(s => s.update)
+  const select = useModeler(s => s.select)
   const sk = o.params!.sketch!
+  const objRef = useRef<THREE.Mesh>(null)
 
   const geom = useMemo(() => renderGeometry(o), [o.id, JSON.stringify(o.params)])
   const material = useMemo(() => new THREE.MeshStandardMaterial({ color: o.color, metalness: 1, roughness: 0.25, envMapIntensity: 1.3 }), [o.color])
@@ -164,11 +169,31 @@ export function SketchNodeEditor({ o }: { o: SculptObject }) {
     if (pick === i) setPick(null); else if (pick != null && pick > i) setPick(pick - 1)
   }
 
+  // Move/rotate/scale the whole sketch (object mode, when no node is grabbed).
+  const commitObject = () => {
+    const m = objRef.current
+    if (!m) return
+    const g = Math.PI / 12
+    update(o.id, {
+      position: snap ? [snapMm(m.position.x), snapMm(m.position.y), snapMm(m.position.z)] : [m.position.x, m.position.y, m.position.z],
+      rotation: snap ? [Math.round(m.rotation.x / g) * g, Math.round(m.rotation.y / g) * g, Math.round(m.rotation.z / g) * g] : [m.rotation.x, m.rotation.y, m.rotation.z],
+      scale: [m.scale.x, m.scale.y, m.scale.z],
+    })
+  }
+
+  const baseMesh = (
+    <mesh ref={objRef} geometry={geom} material={material} position={o.position} rotation={o.rotation} scale={o.scale}
+      onClick={editMode === 'vertex' ? addNode : e => { e.stopPropagation(); select(o.id) }} castShadow>
+      <Edges scale={1.003} threshold={20} color="#3d454a" />
+    </mesh>
+  )
+  const showObjGizmo = editMode === 'object' && pick == null
+
   return (
     <>
-      <mesh geometry={geom} material={material} position={o.position} rotation={o.rotation} scale={o.scale} onClick={addNode} castShadow>
-        <Edges scale={1.003} threshold={20} color="#3d454a" />
-      </mesh>
+      {showObjGizmo
+        ? <TransformControls mode={mode} size={0.8} translationSnap={snap ? GRID_MM : null} onMouseUp={commitObject}>{baseMesh}</TransformControls>
+        : baseMesh}
 
       {sk.points.map((p, i) => i === pick ? null : (
         <group key={i}>
