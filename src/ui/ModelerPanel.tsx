@@ -6,7 +6,7 @@ import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
 import { sculptHandoff, sculptRestore, SculptHandoffError } from '../lib/sculptHandoff'
 import { api, apiConfigured } from '../lib/api'
 import { analyzeMesh, type DfmReport } from '../lib/dfm'
-import { sculptTechSheet } from '../lib/sculptDoc'
+import { sculptTechSheet, sculptQuote } from '../lib/sculptDoc'
 import { textToPdf, bodyAfterTitle } from '../lib/pdf'
 import { ALLOYS, SHAPES, STONES, alloyById, shapeById, stoneMm } from '../catalog'
 import { MARKET } from '../lib/market'
@@ -337,6 +337,19 @@ export function ModelerPanel() {
     const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
     textToPdf(shopName, 'Custom Sculpt — Tech Sheet', bodyAfterTitle(sculptTechSheet(objects, alloyId, shopName)), `${slug}-sculpt-techsheet.pdf`)
   }
+
+  /** Client-facing quote — same numbers as the estimate and the order. */
+  const quotePdf = () => {
+    let handoff
+    try {
+      handoff = sculptHandoff(saveName, objects, alloyId)
+    } catch (err) {
+      flash(err instanceof SculptHandoffError ? err.message : 'Could not price this piece.')
+      return
+    }
+    const slug = shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    textToPdf(shopName, 'Custom Piece — Quote', bodyAfterTitle(sculptQuote(handoff, { brand: shopName })), `${slug}-sculpt-quote.pdf`)
+  }
   const save = () => {
     if (!objects.length) { flash('Nothing to save.'); return }
     const name = saveName.trim() || `Sculpt ${new Date().toLocaleDateString()}`
@@ -618,7 +631,8 @@ export function ModelerPanel() {
       </div>
 
       <div className="panel-block quote">
-        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={techSheet}>Tech sheet</button><button className="ghost" onClick={fuse} disabled={metalCount < 2}>Fuse metal</button></div>
+        <div className="qact"><button className="primary" onClick={exportStl}>Export STL</button><button className="ghost" onClick={quotePdf}>Quote PDF</button><button className="ghost" onClick={techSheet}>Tech sheet</button></div>
+        <div className="qact" style={{ marginTop: 8 }}><button className="ghost" onClick={fuse} disabled={metalCount < 2}>Fuse metal</button></div>
         <div className="qact" style={{ marginTop: 8 }}><button className="ghost" onClick={clear}>Clear all</button></div>
         {metalCount >= 2 && <p className="disc">Fuse unions all {metalCount} metal parts into one watertight solid for printing (gems untouched).</p>}
         {msg && <p className="disc">{msg}</p>}

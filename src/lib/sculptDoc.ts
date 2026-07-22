@@ -2,8 +2,68 @@ import type { SculptObject } from '../state/modeler'
 import { alloyById, stoneById } from '../catalog'
 import { sculptEstimate, sculptWarnings, boundingSize } from './sculpt'
 import { money, gToDwt } from './units'
+import type { SculptHandoff } from './sculptHandoff'
 
 const pad = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length))
+/** Right-align an amount so the money column lines up in monospace. */
+const amountRow = (label: string, amount: string, width = 46) =>
+  `  ${pad(label, width - amount.length)}${amount}`
+
+export interface QuoteOptions {
+  brand?: string
+  /** Days the price holds — metal moves, so a quote shouldn't be open-ended. */
+  validDays?: number
+  /** Deposit share required to start work (0–1). */
+  depositRate?: number
+  /** Injected so the document is deterministic in tests. */
+  today?: Date
+}
+
+/**
+ * A client-facing quote for a sculpted piece. Deliberately not the tech sheet:
+ * no BOM, tolerances or shop notes — what the piece is, what it costs, and how
+ * long the price holds. Line items come straight from the handoff, so a quote
+ * can never disagree with the order or the estimate on screen.
+ */
+export function sculptQuote(handoff: SculptHandoff, opts: QuoteOptions = {}): string {
+  const { brand = 'Blue Flame', validDays = 14, depositRate = 0.5, today = new Date() } = opts
+  const s = handoff.spec
+  const until = new Date(today.getTime() + validDays * 86_400_000)
+  const date = (d: Date) => d.toISOString().slice(0, 10)
+  const deposit = handoff.total * depositRate
+
+  // null (not '') for an omitted line, so intentional '' blank lines survive
+  const stoneLine = s.stones.count > 0
+    ? `  ${pad('Stones', 20)}${s.stones.count} · ${s.stones.carats.toFixed(2)} ct total`
+    : null
+
+  return [
+    `${brand.toUpperCase()} — QUOTE`,
+    '',
+    `  ${pad('Piece', 20)}${handoff.name}`,
+    `  ${pad('Quoted', 20)}${date(today)}`,
+    `  ${pad('Valid until', 20)}${date(until)}`,
+    '',
+    'SPECIFICATION',
+    `  ${pad('Metal', 20)}${s.alloyName}`,
+    `  ${pad('Finished weight', 20)}${s.metal.castGrams.toFixed(2)} g  (${gToDwt(s.metal.castGrams).toFixed(2)} dwt)`,
+    stoneLine,
+    `  ${pad('Components', 20)}${s.parts} part${s.parts === 1 ? '' : 's'}`,
+    '',
+    'PRICE',
+    ...handoff.lines.map(l => amountRow(l.detail ? `${l.label} — ${l.detail}` : l.label, money(l.amount))),
+    `  ${'-'.repeat(46)}`,
+    amountRow('TOTAL', money(handoff.total)),
+    '',
+    'TERMS',
+    `  A ${Math.round(depositRate * 100)}% deposit (${money(deposit)}) starts production;`,
+    '  the balance is due before delivery.',
+    `  This price holds for ${validDays} days — precious metal is quoted at`,
+    '  current market and moves daily.',
+    '  Made to order from a custom model; final weight may vary slightly',
+    '  after casting and finishing.',
+  ].filter(l => l !== null).join('\n')
+}
 
 /**
  * A production tech sheet for a custom sculpt: a bill of materials (every part
