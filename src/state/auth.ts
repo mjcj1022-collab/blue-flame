@@ -9,9 +9,21 @@ const TKEY = 'blue-flame.token'
 const stored = (): string | null => {
   try { return localStorage.getItem(KEY) } catch { return null }
 }
+const storedToken = (): string | null => {
+  try { return localStorage.getItem(TKEY) } catch { return null }
+}
+
+/**
+ * With a backend, a remembered username is only a real session if we still hold
+ * a token. Without this the app looks signed in while every API call fails with
+ * "missing bearer token" — a broken state the user can't see or escape.
+ */
+export const sessionUser = (user: string | null, token: string | null, backend: boolean): string | null =>
+  backend && !token ? null : user
 
 // Restore a backend token across refreshes.
-try { const t = localStorage.getItem(TKEY); if (t) setToken(t) } catch { /* storage disabled */ }
+const restoredToken = storedToken()
+if (restoredToken) setToken(restoredToken)
 
 /**
  * Why a backend sign-in failed. "unreachable" matters on a free host that
@@ -39,7 +51,7 @@ interface AuthStore {
 }
 
 export const useAuth = create<AuthStore>(set => ({
-  user: stored(),
+  user: sessionUser(stored(), restoredToken, apiConfigured()),
   backend: apiConfigured(),
 
   // Standalone gate.

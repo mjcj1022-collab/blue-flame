@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { loginFailureReason } from '../state/auth'
+import { loginFailureReason, sessionUser } from '../state/auth'
 
 /**
  * On a free host that sleeps, an unreachable server must NOT be reported as a
@@ -21,5 +21,28 @@ describe('sign-in failure classification', () => {
   it('defaults to "credentials" for anything unrecognised', () => {
     expect(loginFailureReason('nope')).toBe('credentials')
     expect(loginFailureReason(undefined)).toBe('credentials')
+  })
+})
+
+/**
+ * A remembered username with no surviving token used to render a session that
+ * looked fine but failed every API call with "missing bearer token".
+ */
+describe('restoring a session', () => {
+  it('is NOT signed in when the backend is on but the token is gone', () => {
+    expect(sessionUser('mike', null, true)).toBeNull()
+  })
+
+  it('is signed in when the backend is on and the token survived', () => {
+    expect(sessionUser('mike', 'jwt.abc', true)).toBe('mike')
+  })
+
+  it('keeps the standalone soft-gate session, which needs no token', () => {
+    expect(sessionUser('mike', null, false)).toBe('mike')
+  })
+
+  it('stays signed out when there was no user to begin with', () => {
+    expect(sessionUser(null, 'jwt.abc', true)).toBeNull()
+    expect(sessionUser(null, null, false)).toBeNull()
   })
 })
