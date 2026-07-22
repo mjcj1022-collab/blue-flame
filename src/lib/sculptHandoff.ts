@@ -106,3 +106,18 @@ export function sculptHandoff(name: string, objects: SculptObject[], alloyId: st
 export function isSculptSpec(spec: unknown): spec is SculptDesignSpec {
   return !!spec && typeof spec === 'object' && (spec as { kind?: string }).kind === 'sculpt'
 }
+
+/**
+ * Unpack a saved record back into modeler state. Closes the loop: a sculpted
+ * order can be reopened and re-cut. Throws a SculptHandoffError with a message
+ * fit for the UI when the record isn't a reopenable sculpt.
+ */
+export function sculptRestore(spec: unknown): { objects: SculptObject[]; alloyId: string } {
+  if (!isSculptSpec(spec)) {
+    throw new SculptHandoffError('That’s a configured design, not a sculpted piece — open it on the Design tab.')
+  }
+  if (!Array.isArray(spec.objects) || spec.objects.length === 0) {
+    throw new SculptHandoffError('This saved piece has no geometry to reopen.')
+  }
+  return { objects: spec.objects, alloyId: spec.alloyId }
+}

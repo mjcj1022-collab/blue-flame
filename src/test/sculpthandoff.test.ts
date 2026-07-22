@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sculptHandoff, isSculptSpec, SculptHandoffError, MAX_SPEC_BYTES } from '../lib/sculptHandoff'
+import { sculptHandoff, isSculptSpec, sculptRestore, SculptHandoffError, MAX_SPEC_BYTES } from '../lib/sculptHandoff'
 import { sculptEstimate } from '../lib/sculpt'
 import type { SculptObject } from '../state/modeler'
 
@@ -76,5 +76,26 @@ describe('isSculptSpec', () => {
     expect(isSculptSpec(h.spec)).toBe(true)
     expect(isSculptSpec({ version: 1, category: 'ring' })).toBe(false)
     expect(isSculptSpec(null)).toBe(false)
+  })
+})
+
+describe('sculptRestore — reopening a saved piece', () => {
+  it('round-trips a handoff back into modeler state', () => {
+    const parts = [band(), stone()]
+    const saved = JSON.parse(JSON.stringify(sculptHandoff('Signet', parts, '18kw').spec))  // through storage
+    const restored = sculptRestore(saved)
+    expect(restored.alloyId).toBe('18kw')
+    expect(restored.objects).toHaveLength(2)
+    expect(restored.objects.map(o => o.kind)).toEqual(['shank', 'gem'])
+    expect(restored.objects[0].params?.ringSize).toBe(7)
+  })
+
+  it('explains when the record is a parametric design, pointing at the right tab', () => {
+    expect(() => sculptRestore({ version: 1, category: 'ring' })).toThrow(/Design tab/i)
+  })
+
+  it('rejects a sculpt record with no geometry', () => {
+    expect(() => sculptRestore({ kind: 'sculpt', objects: [] })).toThrow(/no geometry/i)
+    expect(() => sculptRestore({ kind: 'sculpt' })).toThrow(/no geometry/i)
   })
 })

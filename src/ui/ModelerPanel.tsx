@@ -3,7 +3,7 @@ import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type S
 import { profileThumb } from '../lib/sketchPresets'
 import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, sketchSummary, profileThinnest, MIN_SECTION_MM, type BooleanOp } from '../lib/sculpt'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
-import { sculptHandoff, SculptHandoffError } from '../lib/sculptHandoff'
+import { sculptHandoff, sculptRestore, SculptHandoffError } from '../lib/sculptHandoff'
 import { api, apiConfigured } from '../lib/api'
 import { analyzeMesh, type DfmReport } from '../lib/dfm'
 import { sculptTechSheet } from '../lib/sculptDoc'
@@ -256,6 +256,32 @@ export function ModelerPanel() {
   const warnings = useMemo(() => sculptWarnings(objects), [objects])
 
   const [sendingOrder, setSendingOrder] = useState(false)
+  const [serverDesigns, setServerDesigns] = useState<{ id: string; name: string; updated_at: string }[]>([])
+  const [loadingServer, setLoadingServer] = useState(false)
+
+  /** Designs saved on the server — sculpted ones can be reopened here. */
+  const refreshServer = async () => {
+    if (!apiConfigured()) return
+    setLoadingServer(true)
+    try { setServerDesigns(await api.listDesigns() as { id: string; name: string; updated_at: string }[]) }
+    catch { /* offline or waking — the list just stays as it was */ }
+    finally { setLoadingServer(false) }
+  }
+  useEffect(() => { void refreshServer() }, [])
+
+  /** Pull a saved piece back into the modeler, geometry and alloy intact. */
+  const reopen = async (id: string, name: string) => {
+    try {
+      const design = await api.loadDesign(id) as { spec: unknown }
+      const { objects: objs, alloyId: savedAlloy } = sculptRestore(design.spec)
+      load(objs)
+      setAlloy(savedAlloy)
+      flash(`Reopened “${name}” — ${objs.length} part${objs.length === 1 ? '' : 's'}.`)
+    } catch (err) {
+      flash(err instanceof SculptHandoffError ? err.message
+        : err instanceof Error ? `Couldn’t reopen: ${err.message}` : 'Couldn’t reopen that piece.')
+    }
+  }
   /** Push the sculpted piece into the commercial pipeline: persist it as a
    *  design (geometry + costed facts) then open an order against it. */
   const sendToOrder = async () => {
@@ -269,9 +295,10 @@ export function ModelerPanel() {
     }
     setSendingOrder(true)
     try {
-      const saved = await api.saveDesign(handoff.name, handoff.spec) as { id: string }
-      await api.createOrder(saved.id)
+      const savedDesign = await api.saveDesign(handoff.name, handoff.spec) as { id: string }
+      await api.createOrder(savedDesign.id)
       flash(`Ordered “${handoff.name}” — ${money(handoff.total)}, ${handoff.spec.metal.castGrams.toFixed(2)} g ${handoff.spec.alloyName}.`)
+      void refreshServer()   // show it in the reopen list right away
     } catch (err) {
       flash(err instanceof Error ? `Order failed: ${err.message}` : 'Order failed.')
     } finally {
@@ -566,6 +593,28 @@ export function ModelerPanel() {
             </div>
           </div>
         ))}
+
+        {apiConfigured() && (
+          <>
+            <div className="row" style={{ marginTop: 18 }}>
+              <label>On the server</label>
+              <button className="mini" onClick={() => void refreshServer()} disabled={loadingServer}>
+                {loadingServer ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
+            {serverDesigns.length === 0
+              ? <p className="disc">{loadingServer ? 'Loading…' : 'Nothing saved on the server yet. “Send to order” puts a piece here.'}</p>
+              : serverDesigns.map(d => (
+                  <div key={d.id} className="lib-row obj-row">
+                    <div className="lib-meta"><b>{d.name}</b><small>{new Date(d.updated_at.replace(' ', 'T') + 'Z').toLocaleString()}</small></div>
+                    <div className="lib-acts">
+                      <button className="mini" onClick={() => void reopen(d.id, d.name)}>Reopen</button>
+                    </div>
+                  </div>
+                ))}
+            <p className="disc">Sculpted pieces reopen here with their geometry and alloy. Configured designs live on the Design tab.</p>
+          </>
+        )}
       </div>
 
       <div className="panel-block quote">
