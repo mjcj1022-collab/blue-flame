@@ -1,22 +1,40 @@
 # Render blueprint for the Blue Flame API.
-# In Render: New → Blueprint → point at this repo. Render reads this file.
+# Deploy: Render → New → Blueprint → point at this repo. Render reads this file.
+# Requires Node ≥ 23.4 for the built-in node:sqlite (pinned via server/.node-version).
 services:
   - type: web
     name: blue-flame-api
     runtime: node
     rootDir: server
-    plan: free
+    plan: free                       # free tier works out of the box (see the disk note below)
     buildCommand: npm install
     startCommand: npm run seed && npm run start
     healthCheckPath: /api/health
     envVars:
       - key: JWT_SECRET
-        generateValue: true            # Render generates a strong secret
+        generateValue: true          # Render generates a strong secret for you
       - key: CLIENT_ORIGIN
-        value: https://mjcj1022-collab.github.io
+        value: https://mjcj1022-collab.github.io   # the GitHub Pages origin (for CORS)
       - key: DB_FILE
-        value: /var/data/blueflame.db  # persists only with the disk below
-    disk:
-      name: blue-flame-data
-      mountPath: /var/data
-      sizeGB: 1                        # a persistent disk keeps the SQLite file
+        value: blueflame.db          # free tier: local file, re-seeded on each deploy
+                                     # (demo users always work; orders don't persist — see below)
+      # Stripe is OPTIONAL. Leave unset to run without payments. To enable checkout,
+      # set both in the Render dashboard → Environment (test keys first):
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+# --- Persistent data (optional, needs a paid plan) --------------------------
+# The free plan's disk is ephemeral, so the SQLite file resets on every deploy
+# or restart. To keep orders across restarts, upgrade the plan and mount a disk,
+# then point DB_FILE at it:
+#
+#     plan: starter
+#     envVars:
+#       - key: DB_FILE
+#         value: /var/data/blueflame.db
+#     disk:
+#       name: blue-flame-data
+#       mountPath: /var/data
+#       sizeGB: 1
