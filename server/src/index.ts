@@ -128,7 +128,15 @@ app.post('/api/quotes', requireAuth, (req, res) => {
 /* ---------------- orders / pipeline ---------------- */
 
 app.get('/api/orders', requireAuth, (req, res) => {
-  res.json(db.prepare('SELECT * FROM orders WHERE tenant_id = ? ORDER BY created_at DESC').all(me(req).tenant_id))
+  // Join the design so the order list is directly useful (name + whether it's a
+  // sculpt) without a second round trip. LEFT JOIN keeps orders whose design
+  // was deleted.
+  res.json(db.prepare(`
+    SELECT o.*, d.name AS design_name,
+           CASE WHEN json_extract(d.spec, '$.kind') = 'sculpt' THEN 1 ELSE 0 END AS is_sculpt
+    FROM orders o LEFT JOIN designs d ON d.id = o.design_id
+    WHERE o.tenant_id = ? ORDER BY o.created_at DESC
+  `).all(me(req).tenant_id))
 })
 
 app.post('/api/orders', requireAuth, (req, res) => {

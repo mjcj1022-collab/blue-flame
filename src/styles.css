@@ -210,6 +210,14 @@ select.lib-name{appearance:none;-webkit-appearance:none}
 .pipeline .stage.done .dot{background:var(--patina);border-color:var(--patina)}
 .pipeline .stage.now .dot{background:var(--karat);border-color:var(--karat);box-shadow:0 0 0 3px rgba(198,162,101,.2)}
 .pipeline .stage.now .lbl{color:var(--karat-lt)}
+.pipeline .stage:disabled{cursor:default;opacity:.7}
+
+/* server order cards */
+.order-card{border:1px solid var(--rule-dark);background:var(--graphite-2);padding:10px 12px;margin-top:10px}
+.order-head{display:flex;align-items:center;gap:8px}
+.order-head b{font-size:12.5px;color:#DDE2E3;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-head .attr-kind{flex:0 0 auto}
+.order-head .order-stage{margin-left:auto;flex:0 0 auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--karat-lt)}
 
 /* variants */
 .v-acts{display:flex;gap:4px;justify-content:flex-end}
