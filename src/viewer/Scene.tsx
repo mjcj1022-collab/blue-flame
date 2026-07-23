@@ -129,12 +129,17 @@ export function Scene() {
     if (editActive) { setEditTool(tool); return }
     const root = pieceHandle.current
     if (!root) return
-    const verts = pieceToEditableVertices(spec, root)
-    if (verts.length < 9) {
+    const mm = pieceToEditableVertices(spec, root)
+    if (mm.length < 9) {
       setEditNote('Nothing metal to reshape in this view.')
       setTimeout(() => setEditNote(null), 2600)
       return
     }
+    // Bake the display scale into the vertices so the editable mesh renders at
+    // the scene root (like the Sculpt tab) — TransformControls misplaces its
+    // gizmo when the mesh sits inside a scaled group.
+    const s = displayScale(spec)
+    const verts = s === 1 ? mm : mm.map(v => v * s)
     setSpin(false)
     beginEdit(verts, tool)
   }
@@ -161,18 +166,16 @@ export function Scene() {
           </group>
         </Turntable>
         {editActive && editVertices && (
-          <group scale={displayScale(spec)}>
-            <VertexSculptor
-              vertices={editVertices}
-              color={0xD8B36A}
-              falloff={editFalloff}
-              symmetry={editSym}
-              tool={editTool}
-              selectedVertex={editSelVert}
-              onPick={i => pickEditVert(i)}
-              onCommit={v => commitEdit(v)}
-            />
-          </group>
+          <VertexSculptor
+            vertices={editVertices}
+            color={0xD8B36A}
+            falloff={editFalloff}
+            symmetry={editSym}
+            tool={editTool}
+            selectedVertex={editSelVert}
+            onPick={i => pickEditVert(i)}
+            onCommit={v => commitEdit(v)}
+          />
         )}
         {grid && <gridHelper args={[80, 40, '#39424633', '#252b2e']} position={[0, -13, 0]} />}
         <ContactShadows position={[0, -13, 0]} opacity={0.5} scale={70} blur={2.6} far={26} resolution={512} color="#000000" />

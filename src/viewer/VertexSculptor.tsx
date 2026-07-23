@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { TransformControls, Edges } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
@@ -6,7 +6,7 @@ import { sculptPull } from '../lib/sculpt'
 import type { VertexTool } from '../state/modeler'
 
 export interface VertexSculptorProps {
-  /** Flat triangle-soup positions (x,y,z,…) at identity transform, true mm. */
+  /** Flat triangle-soup positions (x,y,z,…) at identity transform. */
   vertices: number[]
   color: number
   falloff: number
@@ -23,14 +23,19 @@ export interface VertexSculptorProps {
 
 /**
  * Direct vertex sculpting for a flat triangle soup, shared by the Sculpt tab
- * (a baked SculptObject) and the Design tab (the parametric piece baked to mm).
+ * (a baked SculptObject) and the Design tab (the parametric piece baked to a
+ * mesh). The mesh renders at the scene root (identity), so world and local
+ * coordinates coincide.
  *
  * Click the surface to grab the nearest vertex. In the Edit tool a translate
- * gizmo appears and dragging pulls surrounding vertices with a smooth falloff
- * (the "Region" radius). In the Select tool the click only highlights the
- * vertex — orbit stays live and nothing moves by accident. The mesh sits at
- * identity transform, so local and world coordinates coincide and the math
- * stays exact.
+ * gizmo appears *at that vertex* and dragging pulls surrounding vertices with a
+ * smooth falloff (the "Region" radius). In the Select tool the click only
+ * highlights the vertex — orbit stays live and nothing moves by accident.
+ *
+ * The gizmo is attached to a dedicated handle Object3D positioned at the grab
+ * point (the `object` prop), not to a wrapped child — drei's TransformControls
+ * tracks the wrapper group's origin otherwise, which puts the gizmo at the
+ * world origin instead of on the vertex.
  */
 export function VertexSculptor({ vertices, color, falloff, symmetry, tool, selectedVertex, onPick, onCommit }: VertexSculptorProps) {
   // Live, mutable geometry — edits write straight into this buffer for instant
@@ -52,14 +57,14 @@ export function VertexSculptor({ vertices, color, falloff, symmetry, tool, selec
   )
   useEffect(() => () => material.dispose(), [material])
 
-  const handleRef = useRef<THREE.Mesh>(null)
-  const baseRef = useRef<Float32Array | null>(null)
-  const centerRef = useRef(new THREE.Vector3())
-  const [pick, setPick] = useState<THREE.Vector3 | null>(null)
-  const [pickKey, setPickKey] = useState(0)
+  // The object the gizmo drives, always at the current grab point.
+  const handle = useMemo(() => new THREE.Object3D(), [])
+  const baseRef = useMemo(() => ({ current: null as Float32Array | null }), [])
+  const centerRef = useMemo(() => new THREE.Vector3(), [])
+  const [active, setActive] = useState(false)
 
   // Switching to the Select tool retires any active drag gizmo.
-  useEffect(() => { if (tool === 'select') setPick(null) }, [tool])
+  useEffect(() => { if (tool === 'select') setActive(false) }, [tool])
 
   const nearest = (p: THREE.Vector3): number => {
     const pos = geom.getAttribute('position') as THREE.BufferAttribute
@@ -75,25 +80,28 @@ export function VertexSculptor({ vertices, color, falloff, symmetry, tool, selec
   const grab = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
     const pos = geom.getAttribute('position') as THREE.BufferAttribute
-    const bi = nearest(e.point)
+    // e.point is world-space; the geometry lives in the clicked mesh's local
+    // space. Convert before matching (robust even inside a transformed parent).
+    const lp = e.eventObject.worldToLocal(e.point.clone())
+    const bi = nearest(lp)
     const c = new THREE.Vector3(pos.getX(bi), pos.getY(bi), pos.getZ(bi))
     onPick(bi, [c.x, c.y, c.z])
     if (tool === 'edit') {
       baseRef.current = (pos.array as Float32Array).slice()
-      centerRef.current.copy(c)
-      setPick(c)
-      setPickKey(k => k + 1)
+      centerRef.copy(c)
+      handle.position.copy(c)          // gizmo jumps to the grabbed vertex
+      setActive(true)
     } else {
-      setPick(null)
+      setActive(false)
     }
   }
 
   const drag = () => {
-    const h = handleRef.current, base = baseRef.current
-    if (!h || !base) return
-    const c = centerRef.current
+    const base = baseRef.current
+    if (!base) return
+    const c = centerRef
     const pos = geom.getAttribute('position') as THREE.BufferAttribute
-    sculptPull(base, [c.x, c.y, c.z], [h.position.x - c.x, h.position.y - c.y, h.position.z - c.z], falloff, symmetry, pos.array as Float32Array)
+    sculptPull(base, [c.x, c.y, c.z], [handle.position.x - c.x, handle.position.y - c.y, handle.position.z - c.z], falloff, symmetry, pos.array as Float32Array)
     pos.needsUpdate = true
     geom.computeVertexNormals()
   }
@@ -101,7 +109,8 @@ export function VertexSculptor({ vertices, color, falloff, symmetry, tool, selec
   const commit = () => {
     const pos = geom.getAttribute('position') as THREE.BufferAttribute
     onCommit(Array.from(pos.array as Float32Array))
-    if (handleRef.current) centerRef.current.copy(handleRef.current.position)
+    // Rebase so a follow-up drag starts clean from the handle's new spot.
+    centerRef.copy(handle.position)
     baseRef.current = (pos.array as Float32Array).slice()
   }
 
@@ -130,20 +139,25 @@ export function VertexSculptor({ vertices, color, falloff, symmetry, tool, selec
       )}
 
       {/* Static highlight for the picked vertex (hidden while a drag gizmo is up). */}
-      {marker && !pick && (
+      {marker && !active && (
         <mesh position={marker} raycast={() => null}>
           <sphereGeometry args={[0.62, 18, 14]} />
           <meshBasicMaterial color={tool === 'select' ? '#7FC8FF' : '#C6A265'} toneMapped={false} />
         </mesh>
       )}
 
-      {pick && (
-        <TransformControls key={pickKey} mode="translate" size={1.1} onObjectChange={drag} onMouseUp={commit}>
-          <mesh ref={handleRef} position={pick}>
-            <sphereGeometry args={[0.55, 16, 12]} />
-            <meshBasicMaterial color="#C6A265" toneMapped={false} />
-          </mesh>
-        </TransformControls>
+      {active && (
+        <>
+          {/* The handle sits at the grab point; a small sphere marks it and the
+              gizmo attaches to it so both track together while dragging. */}
+          <primitive object={handle}>
+            <mesh raycast={() => null}>
+              <sphereGeometry args={[0.55, 16, 12]} />
+              <meshBasicMaterial color="#C6A265" toneMapped={false} />
+            </mesh>
+          </primitive>
+          <TransformControls object={handle} mode="translate" size={1.1} onObjectChange={drag} onMouseUp={commit} />
+        </>
       )}
     </>
   )
