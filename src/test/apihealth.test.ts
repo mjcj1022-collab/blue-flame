@@ -37,10 +37,12 @@ describe('fetchWithRetry (cold-start resilience)', () => {
     return () => calls
   }
 
+  const FAST = { budgetMs: 5_000, baseDelay: 0 }   // same logic, no real waiting
+
   it('retries a transient 503 and returns the eventual success', async () => {
     let n = 0
     const calls = stub(async () => { n++; return new Response('{}', { status: n < 3 ? 503 : 200 }) })
-    const res = await fetchWithRetry('http://x', {}, 3, 0)
+    const res = await fetchWithRetry('http://x', {}, FAST)
     expect(res.status).toBe(200)
     expect(calls()).toBe(3)
   })
@@ -48,27 +50,35 @@ describe('fetchWithRetry (cold-start resilience)', () => {
   it('retries a dropped connection (network error) then succeeds', async () => {
     let n = 0
     const calls = stub(async () => { n++; if (n < 2) throw new TypeError('fetch failed'); return new Response('{}', { status: 200 }) })
-    const res = await fetchWithRetry('http://x', {}, 3, 0)
+    const res = await fetchWithRetry('http://x', {}, FAST)
     expect(res.status).toBe(200)
     expect(calls()).toBe(2)
   })
 
+  it('survives a long cold start — many refusals before the host wakes', async () => {
+    let n = 0
+    const calls = stub(async () => { n++; if (n < 25) throw new TypeError('fetch failed'); return new Response('{}', { status: 200 }) })
+    const res = await fetchWithRetry('http://x', {}, FAST)
+    expect(res.status).toBe(200)
+    expect(calls()).toBe(25)     // a fixed 3-attempt budget would have given up long ago
+  })
+
   it('does NOT retry a real error like 401 — fails fast', async () => {
     const calls = stub(async () => new Response('{}', { status: 401 }))
-    const res = await fetchWithRetry('http://x', {}, 3, 0)
+    const res = await fetchWithRetry('http://x', {}, FAST)
     expect(res.status).toBe(401)
     expect(calls()).toBe(1)
   })
 
-  it('gives up after the attempt budget and surfaces the last response', async () => {
+  it('gives up when the time budget runs out and surfaces the last response', async () => {
     const calls = stub(async () => new Response('{}', { status: 503 }))
-    const res = await fetchWithRetry('http://x', {}, 3, 0)
+    const res = await fetchWithRetry('http://x', {}, { budgetMs: 0, baseDelay: 0 })
     expect(res.status).toBe(503)
-    expect(calls()).toBe(3)
+    expect(calls()).toBeGreaterThanOrEqual(1)
   })
 
-  it('propagates the network error when every attempt fails', async () => {
+  it('propagates the network error when the budget expires', async () => {
     stub(async () => { throw new TypeError('fetch failed') })
-    await expect(fetchWithRetry('http://x', {}, 2, 0)).rejects.toThrow('fetch failed')
+    await expect(fetchWithRetry('http://x', {}, { budgetMs: 0, baseDelay: 0 })).rejects.toThrow('fetch failed')
   })
 })

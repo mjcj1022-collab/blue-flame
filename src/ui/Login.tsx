@@ -9,13 +9,18 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<null | 'credentials' | 'unreachable'>(null)
   const [busy, setBusy] = useState(false)
+  // A sleeping free host takes up to a minute to wake. Silence for that long
+  // reads as "broken", so say what's happening once it's clearly not instant.
+  const [waking, setWaking] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (backend) {
       setBusy(true)
+      const wakeHint = setTimeout(() => setWaking(true), 4000)
       const res = await loginRemote(username, password)
-      setBusy(false)
+      clearTimeout(wakeHint)
+      setBusy(false); setWaking(false)
       if (!res.ok) setError(res.reason)
     } else if (!login(username, password)) {
       setError('credentials')
@@ -44,6 +49,11 @@ export function Login() {
           <div className="login-err">Couldn’t reach the server — it may be waking up. Try again in a moment.</div>
         )}
         <button className="login-btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        {waking && (
+          <p className="login-sub" style={{ margin: '4px 0 -4px', textTransform: 'none', letterSpacing: 0 }}>
+            Waking the server — the free host sleeps when idle, this can take up to a minute.
+          </p>
+        )}
         {backend && <p className="login-sub" style={{ margin: '2px 0 -4px' }}>Connected to backend</p>}
       </form>
     </div>

@@ -39,28 +39,44 @@ export const setToken = (t: string | null): void => { token = t }
 const TRANSIENT = new Set([408, 429, 502, 503, 504])
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+export interface RetryOptions {
+  /** How long to keep trying, ms. Must outlast a cold start, not a blip. */
+  budgetMs?: number
+  baseDelay?: number
+  maxDelay?: number
+}
+
 /**
- * fetch with a few retries for transient failures. A free host sleeps when idle
- * and takes ~30 s to cold-start, so the first request after a nap can fail or
- * 503 — without this, that surfaces as a bogus "login failed". Network errors
- * and TRANSIENT statuses are retried with a linear backoff; everything else
- * returns immediately so real errors stay fast.
+ * fetch that keeps trying for a TIME BUDGET, not a fixed attempt count.
+ *
+ * A free host sleeps when idle and can take ~50 s to wake, during which it may
+ * refuse connections or answer 503 immediately. A handful of quick retries just
+ * burns through in seconds and surfaces a bogus "login failed" — so the budget
+ * has to outlast the wake, not the blip.
+ *
+ * Only network errors and TRANSIENT statuses are retried; anything else (a 401
+ * for a genuinely wrong password) returns on the first try so real errors stay
+ * fast.
  */
 export async function fetchWithRetry(
-  url: string, opts: RequestInit = {}, attempts = 3, baseDelay = 700,
+  url: string, opts: RequestInit = {}, retry: RetryOptions = {},
 ): Promise<Response> {
-  let lastErr: unknown
-  for (let i = 0; i < attempts; i++) {
-    const last = i === attempts - 1
+  const { budgetMs = 75_000, baseDelay = 1_000, maxDelay = 5_000 } = retry
+  const deadline = Date.now() + budgetMs
+  let attempt = 0, lastErr: unknown, lastRes: Response | undefined
+  for (;;) {
     try {
       const res = await fetch(url, opts)
-      if (last || !TRANSIENT.has(res.status)) return res
+      if (!TRANSIENT.has(res.status)) return res   // answered — success or a real error
+      lastRes = res
     } catch (err) {
       lastErr = err
-      if (last) throw err
     }
-    await sleep(baseDelay * (i + 1))
+    const delay = Math.min(baseDelay * ++attempt, maxDelay)
+    if (Date.now() + delay >= deadline) break
+    await sleep(delay)
   }
+  if (lastRes) return lastRes            // out of budget — surface the last transient answer
   throw lastErr ?? new Error('request failed')
 }
 
