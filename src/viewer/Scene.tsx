@@ -200,7 +200,7 @@ export function Scene() {
       </div>
 
       <div className="stage-foot">
-        <div className="scalebar"><i /> {editActive ? (editTool === 'select' ? 'Click a vertex to select · orbit freely' : 'Click the surface, drag the gizmo · scroll to zoom') : 'Drag to orbit · scroll to zoom'}</div>
+        <div className="scalebar"><i /> {editActive ? (editTool === 'select' ? 'Click a vertex to select · orbit freely' : 'Left-click a vertex and drag to reshape · scroll to zoom') : 'Drag to orbit · scroll to zoom'}</div>
       </div>
 
       <div className="stage-toolbar">
