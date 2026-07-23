@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { loginFailureReason, sessionUser } from '../state/auth'
+import { loginFailureReason, sessionUser, sessionInvalidatedBy } from '../state/auth'
 
 /**
  * On a free host that sleeps, an unreachable server must NOT be reported as a
@@ -44,5 +44,28 @@ describe('restoring a session', () => {
   it('stays signed out when there was no user to begin with', () => {
     expect(sessionUser(null, 'jwt.abc', true)).toBeNull()
     expect(sessionUser(null, null, false)).toBeNull()
+  })
+})
+
+/**
+ * Validating the restored token on load. The dangerous mistake here is signing
+ * people out whenever the server is asleep — that would be worse than the stale
+ * session it's meant to fix. Only an active rejection kills the session.
+ */
+describe('verifying a restored session', () => {
+  it('does NOT sign out when the server is unreachable (free host asleep)', () => {
+    expect(sessionInvalidatedBy(new TypeError('Failed to fetch'))).toBe(false)
+    expect(sessionInvalidatedBy(new TypeError('NetworkError when attempting to fetch resource.'))).toBe(false)
+  })
+
+  it('signs out when the server actively rejects the token', () => {
+    expect(sessionInvalidatedBy(new Error('Unauthorized'))).toBe(true)
+    expect(sessionInvalidatedBy(new Error('invalid token'))).toBe(true)
+    expect(sessionInvalidatedBy(new Error('missing bearer token'))).toBe(true)
+  })
+
+  it('treats an unrecognised failure as a rejection, failing closed', () => {
+    expect(sessionInvalidatedBy('weird')).toBe(true)
+    expect(sessionInvalidatedBy(undefined)).toBe(true)
   })
 })

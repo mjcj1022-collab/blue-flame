@@ -42,15 +42,29 @@ export type LoginResult = { ok: true } | { ok: false; reason: LoginFailure }
 export const loginFailureReason = (err: unknown): LoginFailure =>
   err instanceof TypeError ? 'unreachable' : 'credentials'
 
+/**
+ * Whether a failed session check means the stored token is actually dead.
+ *
+ * Only a server that ACTIVELY rejected it (401 — expired, wrong signature, a
+ * tenant that no longer exists) invalidates a session. Being unable to reach
+ * the server says nothing about the token's validity, and a free host that
+ * sleeps would otherwise sign people out every time it naps — worse than the
+ * bug this check exists to fix.
+ */
+export const sessionInvalidatedBy = (err: unknown): boolean =>
+  loginFailureReason(err) === 'credentials'
+
 interface AuthStore {
   user: string | null
   backend: boolean
   login: (username: string, password: string) => boolean
   loginRemote: (email: string, password: string) => Promise<LoginResult>
+  /** Confirm a restored token is still good; sign out only if it was rejected. */
+  verifySession: () => Promise<void>
   logout: () => void
 }
 
-export const useAuth = create<AuthStore>(set => ({
+export const useAuth = create<AuthStore>((set, get) => ({
   user: sessionUser(stored(), restoredToken, apiConfigured()),
   backend: apiConfigured(),
 
@@ -75,6 +89,18 @@ export const useAuth = create<AuthStore>(set => ({
       return { ok: true }
     } catch (err) {
       return { ok: false, reason: loginFailureReason(err) }
+    }
+  },
+
+  // A restored token can be structurally fine but no longer accepted — expired,
+  // or issued for a tenant that no longer exists. Ask the server once on load
+  // rather than letting every later call fail against a session that looks live.
+  verifySession: async () => {
+    if (!apiConfigured() || !get().user || !storedToken()) return
+    try {
+      await api.me()
+    } catch (err) {
+      if (sessionInvalidatedBy(err)) get().logout()
     }
   },
 
