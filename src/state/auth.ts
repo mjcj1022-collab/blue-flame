@@ -3,14 +3,25 @@ import { api, apiConfigured, setToken } from '../lib/api'
 
 // Standalone soft gate (used when no backend is configured). NOT real security.
 const USERS: Record<string, string> = { mike: 'mike123', liliya: 'liliya123' }
+// Standalone (no-backend) roles. Mirrors the seeded backend roles so the admin
+// gate behaves the same offline as it does against the server.
+const SOFT_ROLES: Record<string, string> = { mike: 'admin', liliya: 'associate' }
+const softRole = (user: string): string => SOFT_ROLES[user] ?? 'associate'
 const KEY = 'blue-flame.user'
 const TKEY = 'blue-flame.token'
+const RKEY = 'blue-flame.role'
 
 const stored = (): string | null => {
   try { return localStorage.getItem(KEY) } catch { return null }
 }
 const storedToken = (): string | null => {
   try { return localStorage.getItem(TKEY) } catch { return null }
+}
+const storedRole = (): string | null => {
+  try { return localStorage.getItem(RKEY) } catch { return null }
+}
+const rememberRole = (role: string | null) => {
+  try { if (role) localStorage.setItem(RKEY, role); else localStorage.removeItem(RKEY) } catch { /* */ }
 }
 
 /**
@@ -56,6 +67,7 @@ export const sessionInvalidatedBy = (err: unknown): boolean =>
 
 interface AuthStore {
   user: string | null
+  role: string | null
   backend: boolean
   login: (username: string, password: string) => boolean
   loginRemote: (email: string, password: string) => Promise<LoginResult>
@@ -64,16 +76,22 @@ interface AuthStore {
   logout: () => void
 }
 
+const initUser = sessionUser(stored(), restoredToken, apiConfigured())
+const initRole = initUser ? (apiConfigured() ? (storedRole() ?? 'associate') : softRole(initUser)) : null
+
 export const useAuth = create<AuthStore>((set, get) => ({
-  user: sessionUser(stored(), restoredToken, apiConfigured()),
+  user: initUser,
+  role: initRole,
   backend: apiConfigured(),
 
   // Standalone gate.
   login: (username, password) => {
     const key = username.trim().toLowerCase()
     if (USERS[key] && USERS[key] === password) {
+      const role = softRole(key)
       try { localStorage.setItem(KEY, key) } catch { /* */ }
-      set({ user: key })
+      rememberRole(role)
+      set({ user: key, role })
       return true
     }
     return false
@@ -82,10 +100,12 @@ export const useAuth = create<AuthStore>((set, get) => ({
   // Backend auth (scrypt + JWT) when VITE_API_URL is set.
   loginRemote: async (email, password) => {
     try {
-      const r = await api.login(email.trim().toLowerCase(), password) as { token: string }
+      const r = await api.login(email.trim().toLowerCase(), password) as { token: string; role?: string }
       setToken(r.token)
+      const role = r.role ?? 'associate'
       try { localStorage.setItem(TKEY, r.token); localStorage.setItem(KEY, email.trim().toLowerCase()) } catch { /* */ }
-      set({ user: email.trim().toLowerCase() })
+      rememberRole(role)
+      set({ user: email.trim().toLowerCase(), role })
       return { ok: true }
     } catch (err) {
       return { ok: false, reason: loginFailureReason(err) }
@@ -95,10 +115,13 @@ export const useAuth = create<AuthStore>((set, get) => ({
   // A restored token can be structurally fine but no longer accepted — expired,
   // or issued for a tenant that no longer exists. Ask the server once on load
   // rather than letting every later call fail against a session that looks live.
+  // Also refreshes the role (which the token, not localStorage, is authoritative on).
   verifySession: async () => {
     if (!apiConfigured() || !get().user || !storedToken()) return
     try {
-      await api.me()
+      const r = await api.me() as { user?: { role?: string } }
+      const role = r?.user?.role
+      if (role) { rememberRole(role); set({ role }) }
     } catch (err) {
       if (sessionInvalidatedBy(err)) get().logout()
     }
@@ -107,6 +130,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   logout: () => {
     setToken(null)
     try { localStorage.removeItem(KEY); localStorage.removeItem(TKEY) } catch { /* */ }
-    set({ user: null })
+    rememberRole(null)
+    set({ user: null, role: null })
   }
 }))

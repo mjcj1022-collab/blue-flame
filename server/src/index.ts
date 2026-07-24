@@ -1,4 +1,4 @@
-import express, { type Request } from 'express'
+import express, { type Request, type Response } from 'express'
 import cors from 'cors'
 import { db, uid, audit } from './db.js'
 import { requireAuth, signToken, hashPassword, verifyPassword, type Claims } from './auth.js'
@@ -141,6 +141,38 @@ app.delete('/api/customers/:id', requireAuth, (req, res) => {
   // Detach from any orders first so the order history survives the customer.
   db.prepare('UPDATE orders SET customer_id = NULL WHERE customer_id = ? AND tenant_id = ?').run(req.params.id, me(req).tenant_id)
   const info = db.prepare('DELETE FROM customers WHERE id = ? AND tenant_id = ?').run(req.params.id, me(req).tenant_id)
+  res.json({ deleted: info.changes })
+})
+
+/* ---------------- gallery (curated showcase) ---------------- */
+
+// Everyone in the shop can view the active gallery; only admins curate it.
+const requireAdmin = (req: Request, res: Response): boolean => {
+  if (me(req).role !== 'admin') { res.status(403).json({ error: 'admin only' }); return false }
+  return true
+}
+
+app.get('/api/gallery', requireAuth, (req, res) => {
+  res.json(db.prepare('SELECT id, title, subtitle, image, spec, created_at FROM gallery WHERE tenant_id = ? ORDER BY created_at DESC').all(me(req).tenant_id))
+})
+
+app.post('/api/gallery', requireAuth, (req, res) => {
+  if (!requireAdmin(req, res)) return
+  const { title, subtitle, image, spec } = req.body ?? {}
+  if (!title || !String(title).trim()) { res.status(400).json({ error: 'title required' }); return }
+  if (!image || !String(image).startsWith('data:image')) { res.status(400).json({ error: 'image required' }); return }
+  const id = uid()
+  db.prepare('INSERT INTO gallery (id, tenant_id, title, subtitle, image, spec, created_by) VALUES (?,?,?,?,?,?,?)')
+    .run(id, me(req).tenant_id, String(title).trim(), subtitle ? String(subtitle).trim() : null, String(image), spec ? JSON.stringify(spec) : null, me(req).id)
+  audit(me(req).tenant_id, me(req).id, 'gallery.add', id)
+  res.json({ id })
+})
+
+app.delete('/api/gallery/:id', requireAuth, (req, res) => {
+  if (!requireAdmin(req, res)) return
+  const gid = String(req.params.id)
+  const info = db.prepare('DELETE FROM gallery WHERE id = ? AND tenant_id = ?').run(gid, me(req).tenant_id)
+  audit(me(req).tenant_id, me(req).id, 'gallery.delete', gid)
   res.json({ deleted: info.changes })
 })
 

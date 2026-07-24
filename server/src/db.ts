@@ -80,6 +80,18 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers (tenant_id);
+
+  CREATE TABLE IF NOT EXISTS gallery (
+    id text PRIMARY KEY,
+    tenant_id text NOT NULL,
+    title text NOT NULL,
+    subtitle text,
+    image text NOT NULL,
+    spec text,
+    created_by text,
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_gallery_tenant ON gallery (tenant_id);
 `)
 
 // Link orders to a customer. Additive on an existing database (the column may

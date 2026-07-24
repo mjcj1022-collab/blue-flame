@@ -125,5 +125,18 @@ export const api = {
   createCustomer: (c: { name: string; email?: string; phone?: string; notes?: string }) => req('/api/customers', { method: 'POST', body: JSON.stringify(c) }) as Promise<{ id: string }>,
   updateCustomer: (id: string, c: Partial<{ name: string; email: string; phone: string; notes: string }>) => req(`/api/customers/${id}`, { method: 'PATCH', body: JSON.stringify(c) }) as Promise<{ updated: number }>,
   deleteCustomer: (id: string) => req(`/api/customers/${id}`, { method: 'DELETE' }) as Promise<{ deleted: number }>,
+  listGallery: () => req('/api/gallery') as Promise<ServerGalleryItem[]>,
+  addGallery: (item: { title: string; subtitle?: string; image: string; spec?: unknown }) => req('/api/gallery', { method: 'POST', body: JSON.stringify(item) }) as Promise<{ id: string }>,
+  deleteGallery: (id: string) => req(`/api/gallery/${id}`, { method: 'DELETE' }) as Promise<{ deleted: number }>,
   checkout: (amount_cents: number, order_id: string, design_id?: string) => req('/api/checkout', { method: 'POST', body: JSON.stringify({ amount_cents, order_id, design_id }) }) as Promise<{ clientSecret: string; order_id: string | null }>
+}
+
+/** A curated gallery entry as the server returns it (spec is a JSON string). */
+export interface ServerGalleryItem {
+  id: string
+  title: string
+  subtitle: string | null
+  image: string
+  spec: string | null
+  created_at: string
 }
