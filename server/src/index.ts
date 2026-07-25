@@ -65,7 +65,9 @@ app.post('/api/assistant', requireAuth, async (req, res) => {
     const text = await runAssistant({ system, messages, image })
     res.json({ text })
   } catch (e) {
-    res.status(502).json({ error: 'assistant failed', detail: (e as Error).message })
+    const detail = (e as Error).message || 'unknown error'
+    console.error('[assistant] call failed:', detail)          // shows in Render logs
+    res.status(502).json({ error: 'assistant failed', detail: detail.slice(0, 400) })
   }
 })
 

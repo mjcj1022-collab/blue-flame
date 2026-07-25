@@ -103,8 +103,11 @@ async function req(path: string, opts: RequestInit = {}): Promise<unknown> {
     }
   })
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string }
-    throw new Error(body.error || res.statusText)
+    const body = await res.json().catch(() => ({})) as { error?: string; detail?: string }
+    // Surface the server's `detail` (e.g. the provider's own message) so failures are diagnosable,
+    // not an opaque "assistant failed". Falls back to error, then HTTP status text.
+    const msg = [body.error, body.detail].filter(Boolean).join(': ') || res.statusText
+    throw new Error(msg)
   }
   return res.json()
 }
