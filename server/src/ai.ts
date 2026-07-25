@@ -16,7 +16,7 @@ export interface AiRequest { system?: string; messages: AiMessage[]; image?: str
 
 const provider = () => (process.env.AI_PROVIDER || 'anthropic').toLowerCase()
 const key = () => process.env.AI_API_KEY || ''
-const model = () => process.env.AI_MODEL || (provider() === 'openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-latest')
+const model = () => process.env.AI_MODEL || (provider() === 'openai' ? 'gpt-4o-mini' : 'claude-sonnet-5')
 
 export const aiEnabled = (): boolean => !!key()
 
