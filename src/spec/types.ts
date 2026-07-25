@@ -75,10 +75,12 @@ export interface BraceletGeo {
 }
 
 /** Necklace / chain, optionally carrying a pendant. */
+export type NecklaceStyle = 'cable' | 'curb' | 'rope' | 'figaro' | 'bead'
 export interface NecklaceGeo {
   length: number        // inches
   gauge: number         // mm, chain wire gauge
   hasPendant: boolean
+  chainStyle: NecklaceStyle
 }
 
 export interface DesignSpec {
@@ -101,7 +103,7 @@ export const DEFAULT_RING: RingGeo = { size: 6.5, width: 2.0, thickness: 1.8, fi
 export const DEFAULT_PENDANT: PendantGeo = { bailInner: 4.0, bailGauge: 1.2, hasChain: true, chainLength: 18, chainGauge: 1.0 }
 export const DEFAULT_EARRING: EarringGeo = { pair: true, postGauge: 0.8, postLength: 10, back: 'friction', dropLength: 0 }
 export const DEFAULT_BRACELET: BraceletGeo = { kind: 'tennis', wristCircumference: 165, fitAllowance: 12, width: 3.5, thickness: 2.2, linkCount: 42 }
-export const DEFAULT_NECKLACE: NecklaceGeo = { length: 18, gauge: 1.2, hasPendant: false }
+export const DEFAULT_NECKLACE: NecklaceGeo = { length: 18, gauge: 1.2, hasPendant: false, chainStyle: 'cable' }
 
 export const DEFAULT_SPEC: DesignSpec = {
   version: 1,

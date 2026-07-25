@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Workspace = 'design' | 'model' | 'color'
+export type Workspace = 'design' | 'model' | 'color' | 'ai'
 
 interface WorkspaceStore {
   mode: Workspace

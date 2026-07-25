@@ -2,7 +2,6 @@ import { ALLOYS, SHAPES, STONES, SETTINGS, FINISHES } from '../catalog'
 import { NO_STONE, type ProductCategory, type FinishId } from '../spec/types'
 import { api } from './api'
 import { useDesign } from '../state/design'
-import { useWorkspace } from '../state/workspace'
 
 /**
  * The client half of the AI design assistant. The model is asked to reply in
@@ -124,7 +123,8 @@ function describe(d: AiDesignPatch | null): string[] {
   return m
 }
 
-/** Apply a validated patch to the live design and switch to the Design view. */
+/** Apply a validated patch to the live design. The AI studio shows the same
+ *  piece, so we don't switch tabs — the render just updates in place. */
 export function applyAiDesign(d: AiDesignPatch): void {
   const s = useDesign.getState()
   if (d.category) s.setCategory(d.category)
@@ -135,7 +135,6 @@ export function applyAiDesign(d: AiDesignPatch): void {
   if (d.settingId) s.setSetting(d.settingId)
   if (typeof d.size === 'number') s.setRing({ size: d.size })
   if (d.finish) s.setFinish(d.finish)
-  useWorkspace.getState().setMode('design')
 }
 
 /** Ask the assistant. Returns the parsed reply; throws on transport error. */

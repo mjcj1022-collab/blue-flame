@@ -3,6 +3,7 @@ import { useDesign } from '../state/design'
 import { useModeler, SCULPT_COLORS, type ShankProfile } from '../state/modeler'
 import { useWorkspace } from '../state/workspace'
 import { parseDesign } from '../lib/nlDesign'
+import { NECKLACE_STYLES } from '../lib/necklaceChain'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails, computePrice } from '../lib/pricing'
@@ -289,6 +290,11 @@ function NecklaceControls() {
       <div style={{ height: 16 }} />
       <Slider id="n-gauge" label="Chain gauge" value={n.gauge} min={0.6} max={3} step={0.1}
         display={`${n.gauge.toFixed(1)} mm`} onChange={v => setNecklace({ gauge: v })} />
+      <div className="row" style={{ marginTop: 16 }}><label htmlFor="n-style">Chain style</label></div>
+      <select id="n-style" className="lib-name" style={{ width: '100%' }} value={n.chainStyle ?? 'cable'}
+        onChange={e => setNecklace({ chainStyle: e.target.value as typeof n.chainStyle })}>
+        {NECKLACE_STYLES.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+      </select>
       <div className="opts c2" style={{ marginTop: 16 }}>
         <button className="opt" aria-pressed={!n.hasPendant} onClick={() => setNecklace({ hasPendant: false })}>Chain only</button>
         <button className="opt" aria-pressed={n.hasPendant} onClick={() => setNecklace({ hasPendant: true })}>With pendant</button>

@@ -4,7 +4,7 @@ import { ModelerScene } from './viewer/ModelerScene'
 import { ColorScene } from './viewer/ColorScene'
 import { ColorPanel } from './ui/ColorPanel'
 import { GalleryModal } from './ui/GalleryModal'
-import { AssistantPanel } from './ui/AssistantPanel'
+import { AIStudioPanel } from './ui/AIStudioPanel'
 import { Controls } from './ui/Controls'
 import { MetalPanel } from './ui/MetalPanel'
 import { MetalOptionsPanel } from './ui/MetalOptionsPanel'
@@ -32,9 +32,9 @@ import { CATEGORY_LABEL } from './spec/types'
 import { shareUrl, specFromUrl } from './lib/share'
 import { fetchAndApplySpot } from './lib/spot'
 
-type Mode = 'design' | 'model' | 'color'
+type Mode = 'design' | 'model' | 'color' | 'ai'
 
-function Masthead({ mode, setMode, onLab, onTour, onGallery, onAI }: { mode: Mode; setMode: (m: Mode) => void; onLab: () => void; onTour: () => void; onGallery: () => void; onAI: () => void }) {
+function Masthead({ mode, setMode, onLab, onTour, onGallery }: { mode: Mode; setMode: (m: Mode) => void; onLab: () => void; onTour: () => void; onGallery: () => void }) {
   const spec = useDesign(s => s.spec)
   const reset = useDesign(s => s.reset)
   const shop = useDesign(s => s.shop)
@@ -56,6 +56,7 @@ function Masthead({ mode, setMode, onLab, onTour, onGallery, onAI }: { mode: Mod
         <span className="logo">{shop.name === 'Blue Flame' ? <>BLUE&nbsp;<em>FLAME</em></> : shop.name}</span>
         <div className="mode-tabs">
           <button aria-pressed={mode === 'design'} onClick={() => setMode('design')}>Design</button>
+          <button className="tab-ai" aria-pressed={mode === 'ai'} onClick={() => setMode('ai')}>AI&nbsp;✦</button>
           <button aria-pressed={mode === 'color'} onClick={() => setMode('color')}>Color</button>
           <button aria-pressed={mode === 'model'} onClick={() => setMode('model')}>Sculpt</button>
         </div>
@@ -69,10 +70,11 @@ function Masthead({ mode, setMode, onLab, onTour, onGallery, onAI }: { mode: Mod
           </>
         ) : mode === 'color' ? (
           <span className="tag">{CATEGORY_LABEL[spec.category]} · custom color studio</span>
+        ) : mode === 'ai' ? (
+          <span className="tag">AI design studio · describe it, watch it build</span>
         ) : (
           <span className="tag">Free-form CSG modeler</span>
         )}
-        <button className="mast-lab" onClick={onAI} title="AI design assistant">AI&nbsp;✦</button>
         <button className="mast-lab" onClick={onGallery} title="Open the gallery">Gallery</button>
         <button className="mast-lab" onClick={onLab}>Metal Lab</button>
         <button className="mast-lab" onClick={onTour} title="Show the tour" aria-label="Show the tour">?</button>
@@ -95,7 +97,6 @@ const TOUR_KEY = 'blue-flame.tour.v1'
 export default function App() {
   const [labOpen, setLabOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(true)   // the first window on launch
-  const [aiOpen, setAiOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(() => { try { return !localStorage.getItem(TOUR_KEY) } catch { return false } })
   const mode = useWorkspace(s => s.mode)
   const setMode = useWorkspace(s => s.setMode)
@@ -126,7 +127,7 @@ export default function App() {
 
   return (
     <>
-      <Masthead mode={mode} setMode={setMode} onLab={() => setLabOpen(true)} onTour={() => setTourOpen(true)} onGallery={() => setGalleryOpen(true)} onAI={() => setAiOpen(true)} />
+      <Masthead mode={mode} setMode={setMode} onLab={() => setLabOpen(true)} onTour={() => setTourOpen(true)} onGallery={() => setGalleryOpen(true)} />
       <div className="app">
         {mode === 'design' ? (
           <>
@@ -156,6 +157,13 @@ export default function App() {
               </div>
             </aside>
           </>
+        ) : mode === 'ai' ? (
+          <>
+            <Scene />
+            <aside className="panel ai-aside">
+              <AIStudioPanel />
+            </aside>
+          </>
         ) : (
           <>
             <ModelerScene />
@@ -169,7 +177,6 @@ export default function App() {
       </div>
       <MetalGenerator open={labOpen} onClose={() => setLabOpen(false)} />
       {galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
-      {aiOpen && <AssistantPanel onClose={() => setAiOpen(false)} />}
       {tourOpen && !galleryOpen && <Tour onClose={closeTour} />}
     </>
   )

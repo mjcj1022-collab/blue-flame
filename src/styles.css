@@ -550,3 +550,25 @@ table.cmp.variants td,table.cmp.variants th{white-space:nowrap}
 .ai-input input{flex:1;background:rgba(14,17,19,.8);border:1px solid var(--rule-dark);color:#E9ECEC;font-size:13px;padding:9px 11px;border-radius:6px}
 .ai-input .primary{background:var(--karat);color:#141414;border:1px solid var(--karat);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:9px 15px;cursor:pointer;border-radius:6px}
 .ai-input .primary:disabled{opacity:.5;cursor:default}
+
+/* ── AI studio (full tab) ──────────────────────────────────────── */
+.mode-tabs .tab-ai[aria-pressed="true"]{background:var(--karat);border-color:var(--karat);color:#141414}
+.ai-aside{padding:0}
+.aistudio{display:flex;flex-direction:column;height:100%;min-height:0}
+.aistudio-head{padding:16px 18px;border-bottom:1px solid var(--rule-dark);flex:0 0 auto}
+.aistudio-head h2{margin:0;font-size:16px;color:#fff;letter-spacing:-.01em}
+.aistudio-head p{margin:5px 0 0;font-size:11.5px;color:#8A9296;line-height:1.5}
+.aistudio .ai-off{padding:20px 18px}
+.aistudio .ai-chat{flex:1 1 auto;min-height:0}
+.ai-composer{flex:0 0 auto;border-top:1px solid var(--rule-dark);padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:var(--graphite)}
+.ai-composer textarea{width:100%;resize:vertical;min-height:60px;max-height:180px;background:rgba(14,17,19,.85);border:1px solid var(--rule-dark);color:#E9ECEC;font-family:var(--ui);font-size:13px;line-height:1.45;padding:10px 11px;border-radius:6px}
+.ai-composer-row{display:flex;align-items:center;gap:10px}
+.ai-composer-row .ai-hint{flex:1;font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:#6E787B;text-align:center}
+.ai-composer-row .primary{background:var(--karat);color:#141414;border:1px solid var(--karat);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:9px 16px;cursor:pointer;border-radius:6px}
+.ai-composer-row .primary:disabled{opacity:.5;cursor:default}
+.ai-composer .ai-upload{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#9AA1A4;border:1px solid var(--rule-dark);padding:7px 10px;border-radius:6px}
+.ai-composer .ai-upload:hover{color:#fff;border-color:var(--slate)}
+
+.aistudio-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.aistudio-reset{flex:0 0 auto;background:none;border:1px solid var(--rule-dark);color:#9AA1A4;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:5px;cursor:pointer}
+.aistudio-reset:hover{color:#fff;border-color:var(--slate)}
