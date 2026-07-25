@@ -128,6 +128,9 @@ export const api = {
   listGallery: () => req('/api/gallery') as Promise<ServerGalleryItem[]>,
   addGallery: (item: { title: string; subtitle?: string; image: string; spec?: unknown }) => req('/api/gallery', { method: 'POST', body: JSON.stringify(item) }) as Promise<{ id: string }>,
   deleteGallery: (id: string) => req(`/api/gallery/${id}`, { method: 'DELETE' }) as Promise<{ deleted: number }>,
+  assistantStatus: () => req('/api/assistant/status') as Promise<{ enabled: boolean }>,
+  assistant: (body: { system: string; messages: { role: 'user' | 'assistant'; content: string }[]; image?: string | null }) =>
+    req('/api/assistant', { method: 'POST', body: JSON.stringify(body) }) as Promise<{ text?: string; disabled?: boolean }>,
   checkout: (amount_cents: number, order_id: string, design_id?: string) => req('/api/checkout', { method: 'POST', body: JSON.stringify({ amount_cents, order_id, design_id }) }) as Promise<{ clientSecret: string; order_id: string | null }>
 }
 

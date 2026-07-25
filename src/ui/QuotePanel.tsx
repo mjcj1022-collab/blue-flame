@@ -8,6 +8,7 @@ import { sizeToDiameter, formatSize } from '../lib/sizing'
 import { money, gToDwt } from '../lib/units'
 import { CATEGORY_LABEL, type DesignSpec } from '../spec/types'
 import { Checkout, checkoutConfigured } from './Checkout'
+import { LIVE_SPOT, SYMBOL_TO_SPOT } from '../lib/spot'
 
 function geometryLines(spec: DesignSpec): string[] {
   const alloy = alloyById(spec.metal.alloyId)
@@ -159,6 +160,13 @@ export function QuotePanel() {
       {showCost ? (
         <>
           <div className="qline"><span>Net metal — {alloy.name}</span><span>{money(p.metalCost)}</span></div>
+          {(() => {
+            const sym = SYMBOL_TO_SPOT[alloy.symbol]
+            const live = sym ? LIVE_SPOT.prices[sym] : undefined
+            if (!live || LIVE_SPOT.source === 'static') return null
+            const day = LIVE_SPOT.at ? new Date(LIVE_SPOT.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
+            return <div className="qspot">● live {sym.slice(1)} spot {money(live)}/ozt · {day}</div>
+          })()}
           {hasStones && <div className="qline"><span>{p.stoneCount > 1 ? `${p.stoneCount} stones` : 'Center stone'}</span><span>{money(p.stoneCost)}</span></div>}
           {p.accentCount > 0 && <div className="qline"><span>{p.accentCount} accent stones + setting</span><span>{money(p.accentCost)}</span></div>}
           {hasStones && <div className="qline"><span>Setting labor</span><span>{money(p.settingFee)}</span></div>}

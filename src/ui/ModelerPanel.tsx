@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useModeler, SCULPT_COLORS, type PrimitiveKind, type JewelryKind, type SculptMaterial, type SculptObject, type ShankProfile, type SketchDef } from '../state/modeler'
 import { profileThumb } from '../lib/sketchPresets'
-import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, sketchSummary, profileThinnest, MIN_SECTION_MM, type BooleanOp } from '../lib/sculpt'
+import { booleanOp, modelerToStl, sculptEstimate, sculptWarnings, boundingSize, sketchSummary, profileThinnest, weightScaleFactor, bakedVertices, MIN_SECTION_MM, type BooleanOp } from '../lib/sculpt'
+import { balanceReport, type BalanceReport } from '../lib/balance'
+import { voronoiLatticeVertices, latticeHoleCount } from '../lib/latticeGeo'
+import { chainVertices, chainSpan } from '../lib/chainGeo'
 import { sculptLibrary, type SavedSculpt } from '../lib/sculptLibrary'
 import { sculptHandoff, sculptRestore, SculptHandoffError } from '../lib/sculptHandoff'
 import { api, apiConfigured } from '../lib/api'
@@ -211,12 +214,16 @@ function TextTool() {
 }
 
 export function ModelerPanel() {
-  const { objects, selectedId, mode, editMode, falloff, symmetry, surfaceOp, brush, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, toggleSnap, toggleSymmetry, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, setSurfaceOp, setBrush, select, setMode, setAlloy, clear, load, sketchPresets, applySketchPreset, deleteSketchPreset } = useModeler()
+  const { objects, selectedId, mode, editMode, falloff, symmetry, surfaceOp, brush, alloyId, snap, sketching, past, future, undo, redo, add, addMesh, update, remove, duplicate, arrayCircular, arrayLinear, mirror, centerObject, scaleAll, toggleSnap, toggleSymmetry, subdivideMesh, smoothMesh, fuseMetal, setSketching, setEditMode, setFalloff, setSurfaceOp, setBrush, select, setMode, setAlloy, clear, load, sketchPresets, applySketchPreset, deleteSketchPreset } = useModeler()
   const sel = objects.find(o => o.id === selectedId) ?? null
   const dims = sel ? boundingSize(sel) : [0, 0, 0]
   const others = objects.filter(o => o.id !== selectedId)
   const [otherId, setOtherId] = useState('')
   const [seatTarget, setSeatTarget] = useState('')
+  const [targetG, setTargetG] = useState('')
+  const [bal, setBal] = useState<BalanceReport | null>(null)
+  const [lat, setLat] = useState({ width: 18, height: 12, thickness: 1.4, count: 28, strut: 1.0, seed: 1 })
+  const [chn, setChn] = useState({ links: 10, radius: 3, wire: 0.7 })
   const [count, setCount] = useState(8)
   const [saveName, setSaveName] = useState('')
   const [saved, setSaved] = useState<SavedSculpt[]>(() => sculptLibrary.list())
@@ -271,6 +278,44 @@ export function ModelerPanel() {
 
   const alloy = alloyById(alloyId)
   const est = sculptEstimate(objects, alloyId)
+
+  /** Uniformly resize the whole piece to hit a target cast weight. */
+  const applyResizeToWeight = () => {
+    const t = parseFloat(targetG)
+    if (!(t > 0)) { flash('Enter a target weight in grams.'); return }
+    if (!objects.length) { flash('Nothing to resize yet.'); return }
+    const f = weightScaleFactor(est.castG, t)
+    if (f === 1) { flash('Already at that weight.'); return }
+    scaleAll(f)
+    setTargetG('')
+    flash(`Resized ×${f.toFixed(3)} → ~${t.toFixed(1)} g cast.`)
+  }
+
+  /** Center-of-mass balance over the whole metal piece (all metal parts combined). */
+  const checkBalance = () => {
+    const soup = objects.filter(o => o.material === 'metal').flatMap(bakedVertices)
+    if (soup.length < 9) { flash('Add some metal first.'); return }
+    // Sculpt bands (shank) are modeled in the XY plane, so the finger axis is Z;
+    // otherwise treat the piece as standing upright (Y).
+    const fingerAxis = objects.some(o => o.kind === 'shank' && o.material === 'metal') ? 'z' : 'y'
+    setBal(balanceReport(soup, fingerAxis))
+  }
+
+  /** Drop a pierced Voronoi-lattice panel into the scene as an editable mesh. */
+  const addLattice = () => {
+    const v = voronoiLatticeVertices(lat)
+    if (v.length < 9) { flash('Lattice came out empty — try fewer cells or a thinner strut.'); return }
+    addMesh({ kind: 'mesh', vertices: v, position: [0, 4, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: SCULPT_COLORS.metal, name: 'Voronoi lattice' })
+    flash(`Added lattice — ${latticeHoleCount(lat)} cells pierced.`)
+  }
+
+  /** Drop a procedural interlocking chain into the scene. */
+  const addChain = () => {
+    const v = chainVertices({ ...chn, segments: 18 })
+    if (v.length < 9) { flash('Chain came out empty.'); return }
+    addMesh({ kind: 'mesh', vertices: v, position: [0, 4, 0], rotation: [0, 0, 0], scale: [1, 1, 1], size: 0, material: 'metal', color: SCULPT_COLORS.metal, name: `Chain ×${chn.links}` })
+    flash(`Added chain — ${chn.links} links, ~${chainSpan({ ...chn }).toFixed(0)} mm.`)
+  }
   const { vol, castG, carats, gemCount, metalCost, stoneCost, settingLabor, total } = est
   const warnings = useMemo(() => sculptWarnings(objects), [objects])
 
@@ -406,6 +451,25 @@ export function ModelerPanel() {
           ))}
         </div>
 
+        <h4 style={{ marginTop: 18 }}>Generative <small style={{ color: '#6E787B', fontWeight: 400 }}>Voronoi lattice</small></h4>
+        <Slider label="Cells" value={lat.count} min={6} max={80} step={1} unit="" on={v => setLat(s => ({ ...s, count: v }))} />
+        <Slider label="Strut" value={lat.strut} min={0.4} max={2.5} step={0.1} unit=" mm" on={v => setLat(s => ({ ...s, strut: v }))} />
+        <Slider label="Width" value={lat.width} min={6} max={40} step={1} unit=" mm" on={v => setLat(s => ({ ...s, width: v }))} />
+        <Slider label="Height" value={lat.height} min={6} max={40} step={1} unit=" mm" on={v => setLat(s => ({ ...s, height: v }))} />
+        <Slider label="Thickness" value={lat.thickness} min={0.6} max={3} step={0.1} unit=" mm" on={v => setLat(s => ({ ...s, thickness: v }))} />
+        <div className="opts c2" style={{ marginTop: 8 }}>
+          <button className="opt" onClick={() => setLat(s => ({ ...s, seed: s.seed + 1 }))} title="New random cell arrangement">Shuffle ⟳</button>
+          <button className="opt tpl" onClick={addLattice}>Add lattice ✚</button>
+        </div>
+        <p className="disc">{latticeHoleCount(lat)} cells pierced. Drop it in, then bend it with the vertex tools or subtract it from a band for filigree.</p>
+
+        <div className="row" style={{ marginTop: 12 }}><label>Chain <small style={{ color: '#6E787B' }}>interlocking links</small></label></div>
+        <Slider label="Links" value={chn.links} min={2} max={40} step={1} unit="" on={v => setChn(s => ({ ...s, links: v }))} />
+        <Slider label="Link radius" value={chn.radius} min={1} max={8} step={0.1} unit=" mm" on={v => setChn(s => ({ ...s, radius: v }))} />
+        <Slider label="Wire" value={chn.wire} min={0.3} max={2} step={0.05} unit=" mm" on={v => setChn(s => ({ ...s, wire: v }))} />
+        <div className="opts" style={{ marginTop: 8 }}><button className="opt tpl" onClick={addChain}>Add chain ✚</button></div>
+        <p className="disc">~{chainSpan({ ...chn }).toFixed(0)} mm straight; bend or wrap it into a bracelet or necklace with the vertex tools.</p>
+
         <h4 style={{ marginTop: 18 }}>Text</h4>
         <TextTool />
 
@@ -458,11 +522,34 @@ export function ModelerPanel() {
         </h4>
         <div className="qline"><span>Volume</span><span>{Math.round(vol).toLocaleString()} mm³</span></div>
         <div className="qline hi"><span>Cast weight <i>{alloy.name}</i></span><span>{castG.toFixed(2)} g</span></div>
+        <div className="qline resize-w">
+          <span>Resize to weight</span>
+          <span className="resize-ctl">
+            <input type="number" min={0.2} step={0.1} value={targetG} placeholder={castG > 0 ? castG.toFixed(1) : '—'}
+              onChange={e => setTargetG(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') applyResizeToWeight() }} aria-label="Target cast weight in grams" />
+            <button className="opt" onClick={applyResizeToWeight} disabled={!objects.length}>Set g</button>
+          </span>
+        </div>
         <div className="qline sub"><span>Metal</span><span>{money(metalCost)}</span></div>
         {gemCount > 0 && <div className="qline sub"><span>{gemCount > 1 ? `${gemCount} stones` : 'Stone'} · {carats.toFixed(2)} ct</span><span>{money(stoneCost)}</span></div>}
         {gemCount > 0 && <div className="qline sub"><span>Setting labor ×{gemCount}</span><span>{money(settingLabor)}</span></div>}
         <div className="qline sub"><span>Cast, finish, polish</span><span>{money(MARKET.finishFee)}</span></div>
         <div className="qtotal"><span className="lbl">Estimate</span><span className="amt">{money(total)}</span></div>
+        <div className="opts" style={{ marginTop: 8 }}>
+          <button className="opt tpl" onClick={checkBalance} title="Center of mass — will the ring sit still or rotate on the finger?">Check balance ⚖</button>
+        </div>
+        {bal && (
+          <div className={`dfm bal-${bal.verdict}`}>
+            <div className="dfm-metrics">
+              <span>off-axis {bal.radialOffset.toFixed(2)} mm</span>
+              <span>ratio {(bal.ratio * 100).toFixed(0)}%</span>
+              <span>span {(bal.bboxRadius * 2).toFixed(1)} mm</span>
+            </div>
+            <p className={`dfm-line ${bal.verdict === 'balanced' ? 'pass' : bal.verdict === 'slight' ? 'warn' : 'fail'}`}>
+              <b>{bal.verdict === 'balanced' ? 'Balanced' : bal.verdict === 'slight' ? 'Slightly off-axis' : bal.verdict === 'topheavy' ? 'Top-heavy' : 'Empty'}</b> — {bal.note}
+            </p>
+          </div>
+        )}
         <div className="qact">
           <button className="primary" disabled={sendingOrder} onClick={sendToOrder}>
             {sendingOrder ? 'Sending…' : 'Send to order →'}

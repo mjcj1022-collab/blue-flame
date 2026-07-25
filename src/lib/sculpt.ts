@@ -611,6 +611,18 @@ export function sculptGemCarats(objects: SculptObject[]): number {
   return objects.filter(o => o.kind === 'gem').reduce((s, o) => s + (o.params?.carat ?? 0), 0)
 }
 
+/**
+ * Uniform scale factor to take a piece from its current cast weight to a target
+ * weight. Metal weight scales with volume, i.e. the cube of a linear scale, so
+ * the factor is the cube root of the weight ratio. Clamped to a sane range so a
+ * fat-fingered target can't explode or vanish the piece.
+ */
+export function weightScaleFactor(currentGrams: number, targetGrams: number): number {
+  if (!(currentGrams > 0) || !(targetGrams > 0)) return 1
+  const s = Math.cbrt(targetGrams / currentGrams)
+  return Math.min(5, Math.max(0.2, s))
+}
+
 /* ---------- sculpt price estimate ---------- */
 
 const OZT_G = 31.1035

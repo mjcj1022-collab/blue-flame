@@ -3,6 +3,8 @@ import cors from 'cors'
 import { db, uid, audit } from './db.js'
 import { requireAuth, signToken, hashPassword, verifyPassword, type Claims } from './auth.js'
 import { createPaymentIntent, constructWebhookEvent } from './stripe.js'
+import { getSpot } from './spot.js'
+import { runAssistant, aiEnabled } from './ai.js'
 
 const app = express()
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? '*' }))
@@ -46,6 +48,26 @@ app.use(express.json({ limit: '2mb' }))
 const me = (req: Request) => (req as Request & { user: Claims }).user
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'blue-flame', db: 'sqlite', time: new Date().toISOString() }))
+
+// Daily precious-metal spot (public — prices aren't sensitive). Cached server-side.
+app.get('/api/spot', async (_req, res) => {
+  try { res.json(await getSpot()) }
+  catch { res.json({ prices: {}, at: new Date().toISOString(), source: 'static', stale: true }) }
+})
+
+// AI design assistant proxy (auth-gated so it can't be used to burn the key).
+app.get('/api/assistant/status', requireAuth, (_req, res) => res.json({ enabled: aiEnabled() }))
+app.post('/api/assistant', requireAuth, async (req, res) => {
+  if (!aiEnabled()) { res.json({ disabled: true, text: '' }); return }
+  try {
+    const { system, messages, image } = req.body ?? {}
+    if (!Array.isArray(messages)) { res.status(400).json({ error: 'messages required' }); return }
+    const text = await runAssistant({ system, messages, image })
+    res.json({ text })
+  } catch (e) {
+    res.status(502).json({ error: 'assistant failed', detail: (e as Error).message })
+  }
+})
 
 /* ---------------- auth ---------------- */
 

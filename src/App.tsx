@@ -4,6 +4,7 @@ import { ModelerScene } from './viewer/ModelerScene'
 import { ColorScene } from './viewer/ColorScene'
 import { ColorPanel } from './ui/ColorPanel'
 import { GalleryModal } from './ui/GalleryModal'
+import { AssistantPanel } from './ui/AssistantPanel'
 import { Controls } from './ui/Controls'
 import { MetalPanel } from './ui/MetalPanel'
 import { MetalOptionsPanel } from './ui/MetalOptionsPanel'
@@ -29,10 +30,11 @@ import { computePrice } from './lib/pricing'
 import { money } from './lib/units'
 import { CATEGORY_LABEL } from './spec/types'
 import { shareUrl, specFromUrl } from './lib/share'
+import { fetchAndApplySpot } from './lib/spot'
 
 type Mode = 'design' | 'model' | 'color'
 
-function Masthead({ mode, setMode, onLab, onTour, onGallery }: { mode: Mode; setMode: (m: Mode) => void; onLab: () => void; onTour: () => void; onGallery: () => void }) {
+function Masthead({ mode, setMode, onLab, onTour, onGallery, onAI }: { mode: Mode; setMode: (m: Mode) => void; onLab: () => void; onTour: () => void; onGallery: () => void; onAI: () => void }) {
   const spec = useDesign(s => s.spec)
   const reset = useDesign(s => s.reset)
   const shop = useDesign(s => s.shop)
@@ -70,6 +72,7 @@ function Masthead({ mode, setMode, onLab, onTour, onGallery }: { mode: Mode; set
         ) : (
           <span className="tag">Free-form CSG modeler</span>
         )}
+        <button className="mast-lab" onClick={onAI} title="AI design assistant">AI&nbsp;✦</button>
         <button className="mast-lab" onClick={onGallery} title="Open the gallery">Gallery</button>
         <button className="mast-lab" onClick={onLab}>Metal Lab</button>
         <button className="mast-lab" onClick={onTour} title="Show the tour" aria-label="Show the tour">?</button>
@@ -92,6 +95,7 @@ const TOUR_KEY = 'blue-flame.tour.v1'
 export default function App() {
   const [labOpen, setLabOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(true)   // the first window on launch
+  const [aiOpen, setAiOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(() => { try { return !localStorage.getItem(TOUR_KEY) } catch { return false } })
   const mode = useWorkspace(s => s.mode)
   const setMode = useWorkspace(s => s.setMode)
@@ -107,6 +111,9 @@ export default function App() {
     useDesign.setState({ past: [], future: [] })
     const savedSculpt = autosave.readSculpt()
     if (savedSculpt && savedSculpt.length) useModeler.setState({ objects: savedSculpt, past: [], future: [], selectedId: null })
+    // Pull today's live metal spot (if a backend + metals key are set) and apply
+    // it over the catalog spots, then nudge a re-render so quotes reflect it.
+    void fetchAndApplySpot().then(m => { if (Object.keys(m.prices).length) useDesign.setState(st => ({ spec: { ...st.spec } })) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -119,7 +126,7 @@ export default function App() {
 
   return (
     <>
-      <Masthead mode={mode} setMode={setMode} onLab={() => setLabOpen(true)} onTour={() => setTourOpen(true)} onGallery={() => setGalleryOpen(true)} />
+      <Masthead mode={mode} setMode={setMode} onLab={() => setLabOpen(true)} onTour={() => setTourOpen(true)} onGallery={() => setGalleryOpen(true)} onAI={() => setAiOpen(true)} />
       <div className="app">
         {mode === 'design' ? (
           <>
@@ -162,6 +169,7 @@ export default function App() {
       </div>
       <MetalGenerator open={labOpen} onClose={() => setLabOpen(false)} />
       {galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
+      {aiOpen && <AssistantPanel onClose={() => setAiOpen(false)} />}
       {tourOpen && !galleryOpen && <Tour onClose={closeTour} />}
     </>
   )

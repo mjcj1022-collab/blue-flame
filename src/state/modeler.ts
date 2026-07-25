@@ -126,6 +126,7 @@ interface ModelerStore {
   toggleMeasuring: () => void
   mirror: (id: string) => void
   centerObject: (id: string) => void
+  scaleAll: (factor: number) => void
   sketching: boolean
   sketchEditId: string | null
   setSketching: (on: boolean, editId?: string | null) => void
@@ -313,6 +314,17 @@ export const useModeler = create<ModelerStore>((set, get) => {
   },
 
   centerObject: id => { record(); set(s => ({ objects: s.objects.map(o => o.id === id ? { ...o, position: [0, o.position[1], 0] } : o) })) },
+  // Uniformly resize the whole piece about the origin (scale + layout), e.g. to
+  // hit a target metal weight. Gems scale too, keeping proportions intact.
+  scaleAll: factor => {
+    if (!(factor > 0) || factor === 1) return
+    record()
+    set(s => ({ objects: s.objects.map(o => ({
+      ...o,
+      scale: [o.scale[0] * factor, o.scale[1] * factor, o.scale[2] * factor],
+      position: [o.position[0] * factor, o.position[1] * factor, o.position[2] * factor]
+    })) }))
+  },
 
   add: kind => {
     record()
