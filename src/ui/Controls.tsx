@@ -4,6 +4,7 @@ import { useModeler, SCULPT_COLORS, type ShankProfile } from '../state/modeler'
 import { useWorkspace } from '../state/workspace'
 import { parseDesign } from '../lib/nlDesign'
 import { NECKLACE_STYLES } from '../lib/necklaceChain'
+import { BODY_STYLES } from '../lib/body'
 import { ALLOYS, SHAPES, STONES, SETTINGS, TEMPLATES, FINISHES, shapeById, stoneMm, alloyById, birthstoneMonth, stoneById, finishById, settingById, isGradeable, gradeMultiplier, gradeLabel, CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, FLUOR_GRADES, CERT_LABS, type Alloy, type Grade } from '../catalog'
 import { sizeToDiameter, sizeToCircumference, formatSize, fitAdvice, sizeConversions } from '../lib/sizing'
 import { guardrails, computePrice } from '../lib/pricing'
@@ -11,12 +12,12 @@ import { engraveCapacity, ENGRAVE_FONTS } from '../lib/engrave'
 import { MELEE_QUALITY, MELEE_STYLE } from '../catalog'
 import { money } from '../lib/units'
 import {
-  type ProductCategory, type BraceletKind, type EarringBack,
+  type ProductCategory, type BraceletKind, type EarringBack, type BodyStyle,
   CATEGORY_LABEL, hasCenterStone, stoneOnPiece, NO_STONE
 } from '../spec/types'
 
 const hex = (n: number) => '#' + n.toString(16).padStart(6, '0')
-const CATEGORIES: ProductCategory[] = ['ring', 'pendant', 'earring', 'bracelet', 'necklace']
+const CATEGORIES: ProductCategory[] = ['ring', 'pendant', 'earring', 'bracelet', 'necklace', 'body']
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="grp"><h3>{title}</h3>{children}</div>
@@ -299,6 +300,47 @@ function NecklaceControls() {
         <button className="opt" aria-pressed={!n.hasPendant} onClick={() => setNecklace({ hasPendant: false })}>Chain only</button>
         <button className="opt" aria-pressed={n.hasPendant} onClick={() => setNecklace({ hasPendant: true })}>With pendant</button>
       </div>
+      <div className="row" style={{ marginTop: 16 }}><label htmlFor="n-motif">Motif</label></div>
+      <div className="opts c2">
+        <button className="opt" aria-pressed={(n.motif ?? 'none') === 'none'} onClick={() => setNecklace({ motif: 'none' })}>None</button>
+        <button className="opt" aria-pressed={n.motif === 'celtic'} onClick={() => setNecklace({ motif: 'celtic' })}>Celtic knot</button>
+      </div>
+    </Group>
+  )
+}
+
+/** Common wire gauges, shown alongside the mm value the way piercers spec them. */
+const GAUGE_LABEL: [number, string][] = [[3.2, '8g'], [2.4, '10g'], [2.0, '12g'], [1.6, '14g'], [1.2, '16g'], [1.0, '18g'], [0.8, '20g']]
+const gaugeLabel = (mm: number) => GAUGE_LABEL.reduce((best, cur) => Math.abs(mm - cur[0]) < Math.abs(mm - best[0]) ? cur : best)[1]
+
+function BodyControls() {
+  const { spec, setBody } = useDesign()
+  const b = spec.body
+  const isRing = b.style === 'cbr' || b.style === 'circular' || b.style === 'septum'
+  const isPlug = b.style === 'plug'
+  const sizeLabel = isRing ? 'Inner diameter' : isPlug ? 'Plug diameter' : 'Wearable length'
+  const showBall = b.style !== 'plug' && b.style !== 'septum'
+  return (
+    <Group title="Body jewelry">
+      <div className="row"><label htmlFor="b-style">Style</label></div>
+      <select id="b-style" className="lib-name" style={{ width: '100%' }} value={b.style}
+        onChange={e => setBody({ style: e.target.value as BodyStyle })}>
+        {BODY_STYLES.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+      </select>
+      <div style={{ height: 16 }} />
+      <Slider id="b-gauge" label="Gauge" value={b.gauge} min={0.8} max={3.2} step={0.1}
+        display={`${b.gauge.toFixed(1)} mm · ${gaugeLabel(b.gauge)}`} onChange={v => setBody({ gauge: v })} />
+      <div style={{ height: 16 }} />
+      <Slider id="b-size" label={sizeLabel} value={b.size} min={3} max={25} step={0.5}
+        display={`${b.size.toFixed(1)} mm`} onChange={v => setBody({ size: v })} />
+      {showBall && (
+        <>
+          <div style={{ height: 16 }} />
+          <Slider id="b-ball" label={b.style === 'cbr' ? 'Bead' : b.style === 'labret' ? 'Front / disc' : 'Ball'} value={b.ballSize} min={2} max={10} step={0.5}
+            display={`${b.ballSize.toFixed(1)} mm`} onChange={v => setBody({ ballSize: v })} />
+        </>
+      )}
+      <p className="hint">Threadless and internally-threaded ends both weigh out the same at this gauge; pick the finish under Metal.</p>
     </Group>
   )
 }
@@ -519,6 +561,7 @@ export function Controls() {
       {spec.category === 'earring' && <EarringControls />}
       {spec.category === 'bracelet' && <BraceletControls />}
       {spec.category === 'necklace' && <NecklaceControls />}
+      {spec.category === 'body' && <BodyControls />}
 
       <MetalGroup />
 

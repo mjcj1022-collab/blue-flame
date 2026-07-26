@@ -5,6 +5,7 @@ import { alloyById } from '../catalog'
 import { isHidden } from '../lib/features'
 import { stoneDims } from './Stone'
 import { Head } from './Head'
+import { CelticKnot } from './CelticKnot'
 import { useMetalMaterial } from './material'
 import { necklaceChainVertices } from '../lib/necklaceChain'
 
@@ -16,7 +17,8 @@ export function Necklace({ spec }: { spec: DesignSpec }) {
   const metal = useMetalMaterial(alloy, spec.finish)
   const headMetalMat = useMetalMaterial(alloyById(spec.metal.headAlloyId ?? spec.metal.alloyId), spec.finish)
   const headMetal = spec.metal.twoTone && spec.metal.headAlloyId ? headMetalMat : metal
-  const { length, gauge, hasPendant, chainStyle } = spec.necklace
+  const { length, gauge, hasPendant, chainStyle, motif } = spec.necklace
+  const knot = motif === 'celtic'
   const circ = length * MM_PER_INCH
   const R = circ / (Math.PI * 2)
   const d = stoneDims(spec.center.shapeId, spec.center.carat)
@@ -37,7 +39,14 @@ export function Necklace({ spec }: { spec: DesignSpec }) {
         <mesh geometry={chainGeo} material={metal} scale={[1, 1.15, 1]} />
       )}
 
-      {hasPendant && (
+      {/* Celtic knot motif hangs at the base of the loop, in place of a stone head */}
+      {knot && !isHidden(spec, 'head') && (
+        <group position={[0, -R * 1.15 - Math.max(R * 0.16, 6), 0]}>
+          <CelticKnot material={headMetal} radius={Math.max(R * 0.16, 6)} tube={Math.max(gauge * 0.7, 1.2)} />
+        </group>
+      )}
+
+      {!knot && hasPendant && (
         <group position={[0, -R * 1.15 - d.r * d.lwRatio, 0]}>
           <group rotation={[Math.PI / 2, 0, 0]}>
             <Head material={headMetal} shapeId={spec.center.shapeId} stoneTypeId={spec.center.stoneTypeId}

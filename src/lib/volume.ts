@@ -3,6 +3,7 @@ import { stoneOnPiece } from '../spec/types'
 import { shapeById, stoneMm, settingById, type SettingType } from '../catalog'
 import { sizeToDiameter } from './sizing'
 import { isHidden } from './features'
+import { bodyVolumeMm3 } from './body'
 
 const headOn = (spec: DesignSpec) => stoneOnPiece(spec) && !isHidden(spec, 'head')
 
@@ -133,12 +134,26 @@ function braceletVolume(spec: DesignSpec): VolumeBreakdown {
 }
 
 function necklaceVolume(spec: DesignSpec): VolumeBreakdown {
-  const { length, gauge } = spec.necklace
+  const { length, gauge, motif } = spec.necklace
   const links = isHidden(spec, 'chain') ? 0 : wireVolume(length * MM_PER_INCH, gauge) * 2.2 * 0.45
-  const head = spec.necklace.hasPendant && !isHidden(spec, 'head')
-    ? headVolume(settingById(spec.setting.typeId), centerStoneWidth(spec))
-    : 0
+  let head = 0
+  if (!isHidden(spec, 'head')) {
+    if (motif === 'celtic') {
+      // Interlaced knot medallion: a tube of length ≈ 2·π·Rk·2.2 (a trefoil's wrap).
+      const R = (length * MM_PER_INCH) / (2 * Math.PI)
+      const knotR = Math.max(R * 0.16, 6)
+      const tube = Math.max(gauge * 0.7, 1.2)
+      head = wireVolume(2 * Math.PI * knotR * 2.2, tube * 2)
+    } else if (spec.necklace.hasPendant) {
+      head = headVolume(settingById(spec.setting.typeId), centerStoneWidth(spec))
+    }
+  }
   return { shank: links, head, total: Math.max(links + head, 12) }
+}
+
+function bodyVolume(spec: DesignSpec): VolumeBreakdown {
+  const body = isHidden(spec, 'band') ? 0 : bodyVolumeMm3(spec.body)
+  return { shank: body, head: 0, total: Math.max(body, 2) }
 }
 
 export function computeVolume(spec: DesignSpec): VolumeBreakdown {
@@ -148,5 +163,6 @@ export function computeVolume(spec: DesignSpec): VolumeBreakdown {
     case 'earring':  return earringVolume(spec)
     case 'bracelet': return braceletVolume(spec)
     case 'necklace': return necklaceVolume(spec)
+    case 'body':     return bodyVolume(spec)
   }
 }

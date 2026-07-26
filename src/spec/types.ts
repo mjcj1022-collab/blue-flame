@@ -8,7 +8,7 @@
  * The stone (`center`) and `setting` are shared — a pendant and a ring set the
  * same stone the same way, so the head math is written once and reused.
  */
-export type ProductCategory = 'ring' | 'pendant' | 'earring' | 'bracelet' | 'necklace'
+export type ProductCategory = 'ring' | 'pendant' | 'earring' | 'bracelet' | 'necklace' | 'body'
 
 export type FitProfile = 'standard' | 'comfort'
 export type EarringBack = 'friction' | 'screw' | 'lever' | 'latch'
@@ -76,11 +76,34 @@ export interface BraceletGeo {
 
 /** Necklace / chain, optionally carrying a pendant. */
 export type NecklaceStyle = 'cable' | 'curb' | 'rope' | 'figaro' | 'bead'
+/** Decorative motif hung on the chain. 'celtic' renders an interlaced knot medallion. */
+export type NecklaceMotif = 'none' | 'celtic'
 export interface NecklaceGeo {
   length: number        // inches
   gauge: number         // mm, chain wire gauge
   hasPendant: boolean
   chainStyle: NecklaceStyle
+  motif?: NecklaceMotif // optional decorative pendant motif (default: none)
+}
+
+/**
+ * Body jewelry — barbells, rings and plugs sized in true millimetres and by wire
+ * gauge, the way piercers actually spec them. One geometry block covers every
+ * style; `style` selects which shape the engines and viewer read.
+ */
+export type BodyStyle =
+  | 'barbell'    // straight barbell (tongue, industrial, nipple)
+  | 'curved'     // curved barbell / banana (eyebrow, navel)
+  | 'cbr'        // captive bead ring
+  | 'circular'   // circular barbell / horseshoe
+  | 'septum'     // septum clicker
+  | 'labret'     // labret / flat-back stud
+  | 'plug'       // double-flared plug (stretched lobe)
+export interface BodyGeo {
+  style: BodyStyle
+  gauge: number     // mm, shaft / wire diameter (1.6 mm = 14g, 1.2 mm = 16g)
+  size: number      // mm, wearable length (barbell) or inner diameter (ring / plug)
+  ballSize: number  // mm, ball / bead / disc diameter
 }
 
 export interface DesignSpec {
@@ -97,13 +120,15 @@ export interface DesignSpec {
   earring: EarringGeo
   bracelet: BraceletGeo
   necklace: NecklaceGeo
+  body: BodyGeo
 }
 
 export const DEFAULT_RING: RingGeo = { size: 6.5, width: 2.0, thickness: 1.8, fit: 'standard', profile: 'round' }
 export const DEFAULT_PENDANT: PendantGeo = { bailInner: 4.0, bailGauge: 1.2, hasChain: true, chainLength: 18, chainGauge: 1.0 }
 export const DEFAULT_EARRING: EarringGeo = { pair: true, postGauge: 0.8, postLength: 10, back: 'friction', dropLength: 0 }
 export const DEFAULT_BRACELET: BraceletGeo = { kind: 'tennis', wristCircumference: 165, fitAllowance: 12, width: 3.5, thickness: 2.2, linkCount: 42 }
-export const DEFAULT_NECKLACE: NecklaceGeo = { length: 18, gauge: 1.2, hasPendant: false, chainStyle: 'cable' }
+export const DEFAULT_NECKLACE: NecklaceGeo = { length: 18, gauge: 1.2, hasPendant: false, chainStyle: 'cable', motif: 'none' }
+export const DEFAULT_BODY: BodyGeo = { style: 'barbell', gauge: 1.6, size: 10, ballSize: 4 }
 
 export const DEFAULT_SPEC: DesignSpec = {
   version: 1,
@@ -117,7 +142,8 @@ export const DEFAULT_SPEC: DesignSpec = {
   pendant: DEFAULT_PENDANT,
   earring: DEFAULT_EARRING,
   bracelet: DEFAULT_BRACELET,
-  necklace: DEFAULT_NECKLACE
+  necklace: DEFAULT_NECKLACE,
+  body: DEFAULT_BODY
 }
 
 /** Sentinel stone id for a plain, unstoned piece (a wedding band, a chain). */
@@ -148,5 +174,6 @@ export const CATEGORY_LABEL: Record<ProductCategory, string> = {
   pendant: 'Pendant',
   earring: 'Earrings',
   bracelet: 'Bracelet',
-  necklace: 'Necklace'
+  necklace: 'Necklace',
+  body: 'Body Jewelry'
 }
