@@ -120,7 +120,17 @@ app.use(express.json({ limit: '2mb' }))
 const emailExists = async (email: string): Promise<boolean> =>
   !!(await get('SELECT 1 FROM users WHERE email = ?', String(email).toLowerCase()))
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'blue-flame', db: dbKind, time: new Date().toISOString() }))
+// Health + readiness. Booleans only — never leaks a key. Lets us confirm from
+// outside whether Stripe, the webhook, and persistent storage are wired.
+app.get('/api/health', (_req, res) => res.json({
+  ok: true,
+  service: 'blue-flame',
+  db: dbKind,
+  time: new Date().toISOString(),
+  stripe: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_MONTHLY && process.env.STRIPE_PRICE_OFFLINE),
+  webhook: !!process.env.STRIPE_WEBHOOK_SECRET,
+  persistent: dbKind === 'libsql-turso',
+}))
 
 // Daily precious-metal spot (public — prices aren't sensitive). Cached server-side.
 app.get('/api/spot', async (_req, res) => {
