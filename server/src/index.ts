@@ -518,10 +518,16 @@ app.post('/api/billing/checkout', requireAuth, a(async (req, res) => {
     const plan = PLAN_PRICE[planId]
     if (!plan) { res.status(400).json({ error: 'unknown plan' }); return }
     const priceId = process.env[plan.env] ?? ''
-    const origin = process.env.CLIENT_ORIGIN && process.env.CLIENT_ORIGIN !== '*' ? process.env.CLIENT_ORIGIN : ''
+    const clientOrigin = process.env.CLIENT_ORIGIN && process.env.CLIENT_ORIGIN !== '*' ? process.env.CLIENT_ORIGIN : ''
+    // The app may be served from a subpath (e.g. GitHub Pages /repo/). Use the
+    // return URL the client sent so Stripe drops the customer back INTO the app —
+    // but only if it's under our own origin, so this can't become an open redirect.
+    const returnTo = String((req.body ?? {}).returnTo ?? '').trim()
+    let base = clientOrigin
+    if (returnTo && (!clientOrigin || returnTo.startsWith(clientOrigin))) base = returnTo.replace(/\/+$/, '')
     const session = await createCheckoutSession({
       mode: plan.mode, priceId, tenantId: me(req).tenant_id, planId,
-      successUrl: `${origin}/?billing=success`, cancelUrl: `${origin}/?billing=cancel`,
+      successUrl: `${base}/?billing=success`, cancelUrl: `${base}/?billing=cancel`,
     })
     res.json({ url: session.url })
   } catch (e) {
