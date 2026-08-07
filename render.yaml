@@ -17,6 +17,11 @@ services:
         generateValue: true          # Render generates a strong secret for you
       - key: CLIENT_ORIGIN
         value: https://mjcj1022-collab.github.io   # the GitHub Pages origin (for CORS)
+      # Comp accounts — emails that get full studio access without paying (you, the
+      # owner, plus any staff/testers). Comma-separated. Set this so the paywall
+      # never locks you out of your own studio. e.g. mjcj1022@gmail.com
+      - key: COMP_EMAILS
+        sync: false
       # Persistent database — free Turso (https://turso.tech). Create a database,
       # then set these two from `turso db show <name> --url` and
       # `turso db tokens create <name>`. Without them it falls back to a local

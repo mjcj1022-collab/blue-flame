@@ -10,6 +10,21 @@ const app = express()
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? '*' }))
 
 const me = (req: Request) => (req as Request & { user: Claims }).user
+
+/**
+ * Comp accounts — emails that get full studio access without paying (the shop
+ * owner, staff, testers). Set COMP_EMAILS in the environment as a comma-separated
+ * list. Matched case-insensitively. Kept in env (not the DB) so it survives a
+ * fresh database and can't be lost — the owner can never lock themselves out.
+ */
+const COMP_EMAILS = new Set(
+  (process.env.COMP_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
+const isComped = async (userId: string): Promise<boolean> => {
+  if (COMP_EMAILS.size === 0) return false
+  const u = await get<{ email?: string }>('SELECT email FROM users WHERE id = ?', userId)
+  return !!u?.email && COMP_EMAILS.has(String(u.email).toLowerCase())
+}
+
 /** Wrap an async handler so a rejected promise reaches Express's error handler. */
 const a = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => Promise.resolve(fn(req, res)).catch(next)
@@ -482,6 +497,11 @@ const PLAN_PRICE: Record<string, { mode: 'subscription' | 'payment'; env: string
 }
 
 app.get('/api/subscription', requireAuth, a(async (req, res) => {
+  // Comp accounts (owner / staff / testers) always have access — no Stripe needed,
+  // and it holds even on a fresh database since the list lives in the environment.
+  if (await isComped(me(req).id)) {
+    res.json({ status: 'active', planId: 'studio-monthly', comp: true }); return
+  }
   const t = await get<{ subscription_status?: string; subscription_plan?: string; current_period_end?: number; offline_purchase?: number }>(
     'SELECT subscription_status, subscription_plan, current_period_end, offline_purchase FROM tenants WHERE id = ?', me(req).tenant_id)
   res.json({
