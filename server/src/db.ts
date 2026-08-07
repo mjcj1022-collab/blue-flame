@@ -151,6 +151,37 @@ const SCHEMA = `
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_sculpts_tenant ON sculpts (tenant_id);
+
+  -- Affiliate / referral program. Each affiliate has a unique link code and its
+  -- own commission rate (a fraction, e.g. 0.2 = 20%), settable per link.
+  CREATE TABLE IF NOT EXISTS affiliates (
+    id text PRIMARY KEY,
+    owner_tenant_id text NOT NULL,          -- the shop that runs this affiliate program
+    code text UNIQUE NOT NULL,              -- the per-individual ?ref= code in the link
+    name text,
+    email text,
+    rate real NOT NULL DEFAULT 0.2,
+    active integer NOT NULL DEFAULT 1,
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_affiliates_owner ON affiliates (owner_tenant_id);
+
+  -- One row per commission-earning payment by a referred customer. source_id is
+  -- the Stripe session/invoice id, uniquely constrained so a re-delivered webhook
+  -- can't double-credit.
+  CREATE TABLE IF NOT EXISTS commissions (
+    id text PRIMARY KEY,
+    affiliate_id text NOT NULL,
+    tenant_id text,
+    kind text NOT NULL,                     -- 'subscription' | 'offline'
+    gross_cents integer NOT NULL,
+    rate real NOT NULL,                     -- the affiliate's rate at time of sale
+    commission_cents integer NOT NULL,
+    status text NOT NULL DEFAULT 'pending', -- 'pending' | 'paid'
+    source_id text UNIQUE,
+    created_at text NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_commissions_aff ON commissions (affiliate_id);
 `
 
 // Additive columns applied to existing databases. Each is guarded so re-running
@@ -163,6 +194,7 @@ const MIGRATIONS = [
   'ALTER TABLE tenants ADD COLUMN stripe_customer_id text',
   'ALTER TABLE tenants ADD COLUMN stripe_subscription_id text',
   'ALTER TABLE tenants ADD COLUMN offline_purchase integer NOT NULL DEFAULT 0',
+  'ALTER TABLE tenants ADD COLUMN referred_by text',   // affiliate id that referred this shop
 ]
 
 let ready: Promise<void> | null = null

@@ -14,6 +14,25 @@ const me = (req: Request) => (req as Request & { user: Claims }).user
 const a = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => Promise.resolve(fn(req, res)).catch(next)
 
+/**
+ * Record an affiliate commission for a paying, referred customer. Looks up the
+ * tenant's referrer and its CURRENT rate, then inserts a commission. sourceId is
+ * the Stripe session/invoice id, uniquely constrained, so a re-delivered webhook
+ * can't double-credit. No-ops when the tenant wasn't referred.
+ */
+async function creditCommission(tenantId: string, kind: 'subscription' | 'offline', grossCents: number, sourceId: string): Promise<void> {
+  if (!tenantId || !grossCents || grossCents <= 0) return
+  const t = await get<{ referred_by?: string }>('SELECT referred_by FROM tenants WHERE id = ?', tenantId)
+  if (!t?.referred_by) return
+  const aff = await get<{ id: string; rate: number; active: number }>('SELECT id, rate, active FROM affiliates WHERE id = ?', t.referred_by)
+  if (!aff || !aff.active) return
+  const rate = Number(aff.rate) || 0
+  const commission = Math.round(grossCents * rate)
+  await run(
+    'INSERT OR IGNORE INTO commissions (id, affiliate_id, tenant_id, kind, gross_cents, rate, commission_cents, source_id) VALUES (?,?,?,?,?,?,?,?)',
+    uid(), aff.id, tenantId, kind, grossCents, rate, commission, sourceId)
+}
+
 /* ---------- Stripe webhook (raw body, before the JSON parser) ----------
  * Stripe posts here when a payment settles / a subscription changes; the
  * signature is verified against the raw bytes, so this route must NOT go through
@@ -51,7 +70,7 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         audit(tenantId, null, 'payment.received', null, { amount, payment_intent: pi.id })
       }
     } else if (event.type === 'checkout.session.completed') {
-      const s = event.data.object as { mode?: string; client_reference_id?: string; metadata?: Record<string, string>; customer?: string; subscription?: string }
+      const s = event.data.object as { id?: string; mode?: string; amount_total?: number; client_reference_id?: string; metadata?: Record<string, string>; customer?: string; subscription?: string }
       const tenantId = s.metadata?.tenant_id ?? s.client_reference_id ?? ''
       const planId = s.metadata?.plan_id ?? null
       if (tenantId) {
@@ -61,6 +80,16 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
           await updateTenantSub(tenantId, { subscription_status: 'active', subscription_plan: planId ?? 'studio-monthly', stripe_customer_id: s.customer ?? null, stripe_subscription_id: s.subscription ?? null })
         }
         audit(tenantId, null, 'billing.checkout', planId ?? undefined, { mode: s.mode })
+        // Affiliate commission on this first payment (offline one-time, or the
+        // first month of a subscription). Renewals are credited via invoice.paid.
+        await creditCommission(tenantId, s.mode === 'payment' ? 'offline' : 'subscription', s.amount_total ?? 0, s.id ?? uid())
+      }
+    } else if (event.type === 'invoice.paid') {
+      // Recurring subscription payments (not the first — that's covered above).
+      const inv = event.data.object as { id?: string; subscription?: string; amount_paid?: number; billing_reason?: string }
+      if (inv.subscription && inv.billing_reason === 'subscription_cycle') {
+        const t = await get<{ id?: string }>('SELECT id FROM tenants WHERE stripe_subscription_id = ?', inv.subscription)
+        if (t?.id) await creditCommission(t.id, 'subscription', inv.amount_paid ?? 0, inv.id ?? uid())
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub = event.data.object as { status?: string; current_period_end?: number; metadata?: Record<string, string> }
@@ -118,13 +147,19 @@ app.post('/api/assistant', requireAuth, a(async (req, res) => {
 /* ---------------- auth ---------------- */
 
 app.post('/api/auth/register', a(async (req, res) => {
-  const { shop, email, password } = req.body ?? {}
+  const { shop, email, password, ref } = req.body ?? {}
   if (!shop || !email || !password) { res.status(400).json({ error: 'shop, email and password are required' }); return }
   if (await emailExists(email)) { res.status(400).json({ error: 'that email is already registered' }); return }
   const tenantId = uid()
   const slug = `${String(shop).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${tenantId.slice(0, 4)}`
   const userId = uid()
-  await run('INSERT INTO tenants (id, name, slug) VALUES (?,?,?)', tenantId, shop, slug)
+  // Attribute the signup to an affiliate if a valid, active ref code came along.
+  let referredBy: string | null = null
+  if (ref) {
+    const aff = await get<{ id: string }>('SELECT id FROM affiliates WHERE code = ? AND active = 1', String(ref).toLowerCase())
+    referredBy = aff?.id ?? null
+  }
+  await run('INSERT INTO tenants (id, name, slug, referred_by) VALUES (?,?,?,?)', tenantId, shop, slug, referredBy)
   await run('INSERT INTO users (id, tenant_id, email, password_hash, role) VALUES (?,?,?,?,?)',
     userId, tenantId, String(email).toLowerCase(), hashPassword(password), 'admin')
   audit(tenantId, userId, 'register')
@@ -190,6 +225,72 @@ app.delete('/api/team/:id', requireAuth, requireRole('admin'), a(async (req, res
   const info = await run('DELETE FROM users WHERE id = ? AND tenant_id = ?', req.params.id, me(req).tenant_id)
   audit(me(req).tenant_id, me(req).id, 'team.remove', String(req.params.id))
   res.json({ deleted: info.changes })
+}))
+
+/* ---------------- affiliates / referral program ----------------
+ * Admin-only. Each affiliate has a unique link code and its own commission rate,
+ * which the owner can change any time. Referred signups and their commissions
+ * are tracked automatically (see register + the Stripe webhook). */
+const slugify = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 16)
+const clampRate = (pct: unknown) => Math.max(0, Math.min(1, (Number(pct) || 0) / 100))
+async function genAffiliateCode(base: unknown): Promise<string> {
+  const s = slugify(base) || 'ref'
+  for (let i = 0; i < 6; i++) {
+    const code = `${s}-${uid().slice(0, 4)}`
+    if (!(await get('SELECT 1 FROM affiliates WHERE code = ?', code))) return code
+  }
+  return `ref-${uid().slice(0, 8)}`
+}
+
+app.get('/api/affiliates', requireAuth, requireRole('admin'), a(async (req, res) => {
+  res.json(await all(`
+    SELECT af.id, af.code, af.name, af.email, af.rate, af.active, af.created_at,
+      (SELECT COUNT(*) FROM tenants t WHERE t.referred_by = af.id) AS referrals,
+      (SELECT COUNT(*) FROM commissions c WHERE c.affiliate_id = af.id) AS conversions,
+      (SELECT COALESCE(SUM(commission_cents),0) FROM commissions c WHERE c.affiliate_id = af.id) AS earned_cents,
+      (SELECT COALESCE(SUM(commission_cents),0) FROM commissions c WHERE c.affiliate_id = af.id AND c.status='pending') AS pending_cents
+    FROM affiliates af WHERE af.owner_tenant_id = ? ORDER BY af.created_at DESC
+  `, me(req).tenant_id))
+}))
+
+app.post('/api/affiliates', requireAuth, requireRole('admin'), a(async (req, res) => {
+  const { name, email, code, ratePct } = req.body ?? {}
+  const finalCode = code ? slugify(code) : await genAffiliateCode(name)
+  if (!finalCode) { res.status(400).json({ error: 'could not build a link code' }); return }
+  if (await get('SELECT 1 FROM affiliates WHERE code = ?', finalCode)) { res.status(400).json({ error: 'that link code is already taken' }); return }
+  const id = uid()
+  const rate = clampRate(ratePct ?? 20)
+  await run('INSERT INTO affiliates (id, owner_tenant_id, code, name, email, rate) VALUES (?,?,?,?,?,?)',
+    id, me(req).tenant_id, finalCode, name ? String(name) : null, email ? String(email) : null, rate)
+  audit(me(req).tenant_id, me(req).id, 'affiliate.create', id, { code: finalCode, rate })
+  res.json({ id, code: finalCode, rate })
+}))
+
+app.patch('/api/affiliates/:id', requireAuth, requireRole('admin'), a(async (req, res) => {
+  const { ratePct, active, name, email } = req.body ?? {}
+  const fields: Record<string, unknown> = {}
+  if (ratePct !== undefined) fields.rate = clampRate(ratePct)
+  if (active !== undefined) fields.active = active ? 1 : 0
+  if (name !== undefined) fields.name = name ? String(name) : null
+  if (email !== undefined) fields.email = email ? String(email) : null
+  const cols = Object.keys(fields)
+  if (!cols.length) { res.json({ updated: 0 }); return }
+  const set = cols.map(c => `${c} = ?`).join(', ')
+  const info = await run(`UPDATE affiliates SET ${set} WHERE id = ? AND owner_tenant_id = ?`, ...cols.map(c => fields[c]), String(req.params.id), me(req).tenant_id)
+  audit(me(req).tenant_id, me(req).id, 'affiliate.update', String(req.params.id), fields)
+  res.json({ updated: info.changes })
+}))
+
+app.delete('/api/affiliates/:id', requireAuth, requireRole('admin'), a(async (req, res) => {
+  // Deactivate rather than delete, so commission history is preserved.
+  const info = await run('UPDATE affiliates SET active = 0 WHERE id = ? AND owner_tenant_id = ?', String(req.params.id), me(req).tenant_id)
+  res.json({ deactivated: info.changes })
+}))
+
+app.get('/api/affiliates/:id/commissions', requireAuth, requireRole('admin'), a(async (req, res) => {
+  const aff = await get('SELECT id FROM affiliates WHERE id = ? AND owner_tenant_id = ?', String(req.params.id), me(req).tenant_id)
+  if (!aff) { res.status(404).json({ error: 'not found' }); return }
+  res.json(await all('SELECT id, kind, gross_cents, rate, commission_cents, status, created_at FROM commissions WHERE affiliate_id = ? ORDER BY created_at DESC', String(req.params.id)))
 }))
 
 /* ---------------- designs ---------------- */
