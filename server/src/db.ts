@@ -1,12 +1,67 @@
-import { DatabaseSync } from 'node:sqlite'
+import { createClient, type Client, type InValue } from '@libsql/client'
 
-// Embedded SQLite — no external database to provision. The file lives beside
-// the server. For production scale, swap to Postgres (schema.sql mirrors this).
-export const db = new DatabaseSync(process.env.DB_FILE ?? 'blueflame.db')
+/**
+ * Database layer on libSQL (SQLite-compatible). In production it points at a
+ * hosted Turso database so accounts, orders and subscriptions PERSIST across
+ * deploys and restarts — the free tier the shop runs on has an ephemeral disk,
+ * so the data can't live in a local file. Locally (no Turso env) it falls back
+ * to a plain SQLite file, so `npm run dev` needs nothing set up.
+ *
+ * Env:
+ *   TURSO_DATABASE_URL   libsql://<db>.turso.io   (prod — persistent)
+ *   TURSO_AUTH_TOKEN     the database token
+ *   DB_FILE              local file path when Turso isn't set (default blueflame.db)
+ */
+const url = process.env.TURSO_DATABASE_URL || `file:${process.env.DB_FILE ?? 'blueflame.db'}`
+const authToken = process.env.TURSO_AUTH_TOKEN
+export const dbKind = process.env.TURSO_DATABASE_URL ? 'libsql-turso' : 'libsql-file'
+export const client: Client = createClient(authToken ? { url, authToken } : { url })
 
-db.exec(`
-  PRAGMA journal_mode = WAL;
+/** undefined isn't a valid bound value; SQLite uses NULL. */
+const norm = (v: unknown): InValue => (v === undefined ? null : v) as InValue
 
+/** Run a write; returns the affected-row count as `.changes` (mirrors the old API). */
+export async function run(sql: string, ...args: unknown[]): Promise<{ changes: number }> {
+  const r = await client.execute({ sql, args: args.map(norm) })
+  return { changes: Number(r.rowsAffected) }
+}
+
+/** libSQL rows are array-like; turn them into plain, JSON-safe objects keyed by column. */
+function toObjects(cols: string[], rows: unknown[]): Record<string, unknown>[] {
+  return (rows as Record<string, unknown>[]).map(row => {
+    const o: Record<string, unknown> = {}
+    cols.forEach((c, i) => { o[c] = (row as unknown as unknown[])[i] })
+    return o
+  })
+}
+
+/** First matching row, or undefined. */
+export async function get<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T | undefined> {
+  const r = await client.execute({ sql, args: args.map(norm) })
+  return (toObjects(r.columns, r.rows)[0] as unknown as T) ?? undefined
+}
+
+/** All matching rows. */
+export async function all<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T[]> {
+  const r = await client.execute({ sql, args: args.map(norm) })
+  return toObjects(r.columns, r.rows) as unknown as T[]
+}
+
+/** Run a multi-statement SQL script (schema, migrations). */
+export async function exec(sql: string): Promise<void> { await client.executeMultiple(sql) }
+
+export const uid = (): string => globalThis.crypto.randomUUID()
+
+/**
+ * Append to the audit log. Fire-and-forget with its own catch so a logging
+ * failure never breaks the request it's recording — callers don't await it.
+ */
+export function audit(tenantId: string, actorId: string | null, action: string, target?: string | null, detail?: unknown): void {
+  run('INSERT INTO audit_log (tenant_id, actor_id, action, target, detail) VALUES (?,?,?,?,?)',
+    tenantId, actorId ?? null, action, target ?? null, detail ? JSON.stringify(detail) : null).catch(() => { /* logging is best-effort */ })
+}
+
+const SCHEMA = `
   CREATE TABLE IF NOT EXISTS tenants (
     id text PRIMARY KEY,
     name text NOT NULL,
@@ -14,7 +69,6 @@ db.exec(`
     markup real NOT NULL DEFAULT 1.35,
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
-
   CREATE TABLE IF NOT EXISTS users (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -24,7 +78,6 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now')),
     UNIQUE (tenant_id, email)
   );
-
   CREATE TABLE IF NOT EXISTS designs (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -35,7 +88,6 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now')),
     updated_at text NOT NULL DEFAULT (datetime('now'))
   );
-
   CREATE TABLE IF NOT EXISTS quotes (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -46,7 +98,6 @@ db.exec(`
     expires_at text,
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
-
   CREATE TABLE IF NOT EXISTS orders (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -59,7 +110,6 @@ db.exec(`
     balance_cents integer,
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
-
   CREATE TABLE IF NOT EXISTS audit_log (
     id integer PRIMARY KEY AUTOINCREMENT,
     tenant_id text NOT NULL,
@@ -69,7 +119,6 @@ db.exec(`
     detail text,
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
-
   CREATE TABLE IF NOT EXISTS customers (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -80,7 +129,6 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers (tenant_id);
-
   CREATE TABLE IF NOT EXISTS gallery (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -92,8 +140,6 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_gallery_tenant ON gallery (tenant_id);
-
-  -- Cloud maker library: sculpts (with tags) synced across a shop's devices.
   CREATE TABLE IF NOT EXISTS sculpts (
     id text PRIMARY KEY,
     tenant_id text NOT NULL,
@@ -105,28 +151,26 @@ db.exec(`
     created_at text NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_sculpts_tenant ON sculpts (tenant_id);
-`)
+`
 
-// Link orders to a customer. Additive on an existing database (the column may
-// already be present), so the ALTER is guarded.
-try { db.exec('ALTER TABLE orders ADD COLUMN customer_id text') } catch { /* column already exists */ }
+// Additive columns applied to existing databases. Each is guarded so re-running
+// against an up-to-date schema is a no-op.
+const MIGRATIONS = [
+  'ALTER TABLE orders ADD COLUMN customer_id text',
+  "ALTER TABLE tenants ADD COLUMN subscription_status text NOT NULL DEFAULT 'none'",
+  'ALTER TABLE tenants ADD COLUMN subscription_plan text',
+  'ALTER TABLE tenants ADD COLUMN current_period_end integer',
+  'ALTER TABLE tenants ADD COLUMN stripe_customer_id text',
+  'ALTER TABLE tenants ADD COLUMN stripe_subscription_id text',
+  'ALTER TABLE tenants ADD COLUMN offline_purchase integer NOT NULL DEFAULT 0',
+]
 
-// Billing: a shop's subscription / one-time-purchase state lives on the tenant.
-// Additive + guarded so it applies cleanly to an existing database.
-for (const col of [
-  "subscription_status text NOT NULL DEFAULT 'none'",  // none|active|trialing|past_due|canceled
-  'subscription_plan text',
-  'current_period_end integer',                        // epoch ms the paid period runs through
-  'stripe_customer_id text',
-  'stripe_subscription_id text',
-  'offline_purchase integer NOT NULL DEFAULT 0',       // 1 = bought the offline build outright
-]) {
-  try { db.exec(`ALTER TABLE tenants ADD COLUMN ${col}`) } catch { /* column already exists */ }
-}
-
-export const uid = (): string => globalThis.crypto.randomUUID()
-
-export function audit(tenantId: string, actorId: string | null, action: string, target?: string, detail?: unknown): void {
-  db.prepare('INSERT INTO audit_log (tenant_id, actor_id, action, target, detail) VALUES (?,?,?,?,?)')
-    .run(tenantId, actorId, action, target ?? null, detail ? JSON.stringify(detail) : null)
+let ready: Promise<void> | null = null
+/** Create the schema and apply migrations. Idempotent; awaited once at startup. */
+export function initDb(): Promise<void> {
+  if (!ready) ready = (async () => {
+    await exec(SCHEMA)
+    for (const m of MIGRATIONS) { try { await client.execute(m) } catch { /* column already exists */ } }
+  })()
+  return ready
 }

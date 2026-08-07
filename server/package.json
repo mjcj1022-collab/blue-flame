@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Blue Flame backend — runs locally on SQLite with real auth. Optional Postgres + Stripe for production.",
+  "description": "Blue Flame backend — libSQL (Turso) persistence, real auth, Stripe billing.",
   "engines": {
-    "node": ">=23.4"
+    "node": ">=18"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -13,6 +13,7 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
